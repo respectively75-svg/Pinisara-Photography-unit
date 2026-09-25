@@ -1,0 +1,6 @@
+{
+  "name": "Pinisara Photographers",
+  "description": "High-resolution public photo gallery and visual archive by Pinisara Photographers: Hasaranga Jayawardhana, Dulen Induwara, Sayul Angammana, and Udula Matheesha.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

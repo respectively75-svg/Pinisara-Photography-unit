@@ -1,0 +1,332 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Public profile of school gallery user, photographer, or administrator",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Full name or screen name",
+          "maxLength": 100
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "URL to avatar image",
+          "maxLength": 500
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short bio or student photographer accreditation",
+          "maxLength": 300
+        },
+        "role": {
+          "type": "string",
+          "description": "Role within school media hub",
+          "enum": ["student", "parent", "photographer", "editor", "admin"]
+        },
+        "affiliation": {
+          "type": "string",
+          "description": "Affiliation such as Varsity Athletics, Class of 2026, or Media Club",
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account registration timestamp"
+        }
+      },
+      "required": ["userId", "displayName", "role", "createdAt"]
+    },
+    "PrivateUserInfo": {
+      "title": "PrivateUserInfo",
+      "description": "Private PII and security settings for authenticated user",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Verified email address",
+          "maxLength": 150
+        },
+        "mfaEnabled": {
+          "type": "boolean",
+          "description": "Whether multi-factor authentication is enabled"
+        },
+        "mfaMethod": {
+          "type": "string",
+          "description": "MFA method",
+          "enum": ["totp", "sms", "none"]
+        },
+        "notificationSettings": {
+          "type": "object",
+          "description": "Push notification category preferences"
+        }
+      },
+      "required": ["email", "mfaEnabled"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "School game, championship, graduation, or ceremony gallery collection",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique event identifier",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Event headline, e.g., Varsity Basketball State Quarterfinal",
+          "maxLength": 150
+        },
+        "category": {
+          "type": "string",
+          "description": "Category slug",
+          "maxLength": 50
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date of event"
+        },
+        "venue": {
+          "type": "string",
+          "description": "Location or gymnasium/field name",
+          "maxLength": 100
+        },
+        "opponent": {
+          "type": "string",
+          "description": "Opponent school or organization if athletic game",
+          "maxLength": 100
+        },
+        "score": {
+          "type": "string",
+          "description": "Final score or match result",
+          "maxLength": 50
+        },
+        "photoCount": {
+          "type": "number",
+          "description": "Number of high-resolution photos published"
+        },
+        "coverPhotoUrl": {
+          "type": "string",
+          "description": "Cover hero image URL",
+          "maxLength": 500
+        },
+        "publishedBy": {
+          "type": "string",
+          "description": "Admin or editor UID who created the event",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Publication timestamp"
+        }
+      },
+      "required": ["id", "title", "category", "date", "coverPhotoUrl", "publishedBy", "publishedAt"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "High-resolution photo asset with multi-resolution links, metadata, and photographer credit",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique photo identifier",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "eventId": {
+          "type": "string",
+          "description": "Associated event ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Photo caption or title",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "Full game action description or moment context",
+          "maxLength": 1000
+        },
+        "category": {
+          "type": "string",
+          "description": "Event category",
+          "maxLength": 50
+        },
+        "originalUrl": {
+          "type": "string",
+          "description": "Full resolution 4K / RAW downloadable URL",
+          "maxLength": 500
+        },
+        "webUrl": {
+          "type": "string",
+          "description": "Optimized 1920px web image URL",
+          "maxLength": 500
+        },
+        "mobileUrl": {
+          "type": "string",
+          "description": "Optimized 1080px mobile display URL",
+          "maxLength": 500
+        },
+        "thumbnailUrl": {
+          "type": "string",
+          "description": "Thumbnail preview URL",
+          "maxLength": 500
+        },
+        "aspectRatio": {
+          "type": "string",
+          "description": "Ratio e.g. 3:2, 16:9, 4:5, 1:1",
+          "maxLength": 10
+        },
+        "photographerName": {
+          "type": "string",
+          "description": "Photographer credit name",
+          "maxLength": 100
+        },
+        "photographerId": {
+          "type": "string",
+          "description": "UID of photographer if registered",
+          "maxLength": 128
+        },
+        "photographerRole": {
+          "type": "string",
+          "description": "Student Media / Yearbook / Athletic Staff",
+          "maxLength": 80
+        },
+        "camera": {
+          "type": "string",
+          "description": "Camera body metadata",
+          "maxLength": 80
+        },
+        "lens": {
+          "type": "string",
+          "description": "Lens specification",
+          "maxLength": 80
+        },
+        "settings": {
+          "type": "string",
+          "description": "ISO, Shutter, Aperture, e.g., 1/1600s, f/2.8, ISO 3200",
+          "maxLength": 100
+        },
+        "tags": {
+          "type": "array",
+          "description": "Search tags, player numbers, athletic divisions"
+        },
+        "downloadCount": {
+          "type": "number",
+          "description": "Total download counter"
+        },
+        "likesCount": {
+          "type": "number",
+          "description": "Total favorites / likes"
+        },
+        "dateTaken": {
+          "type": "string",
+          "format": "date",
+          "description": "Date captured"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "title", "originalUrl", "webUrl", "photographerName", "category", "createdAt"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "User bookmarked photo collection item",
+      "type": "object",
+      "properties": {
+        "photoId": {
+          "type": "string",
+          "description": "Target photo identifier",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when photo was favorited"
+        }
+      },
+      "required": ["photoId", "userId", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Real-time game score, new photo gallery drop, or athletic alert",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Notification ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "description": "Type of alert",
+          "enum": ["game_score", "new_gallery", "announcement", "photographer_feature"]
+        },
+        "title": {
+          "type": "string",
+          "description": "Alert title",
+          "maxLength": 120
+        },
+        "message": {
+          "type": "string",
+          "description": "Notification body content",
+          "maxLength": 300
+        },
+        "eventId": {
+          "type": "string",
+          "description": "Optional associated event identifier",
+          "maxLength": 100
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp alert was dispatched"
+        }
+      },
+      "required": ["id", "type", "title", "message", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Public user profile and media accreditation"
+    },
+    "/users/{userId}/private/{privateId}": {
+      "schema": "PrivateUserInfo",
+      "description": "Protected user PII, email, and MFA credentials"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Official school athletic and community events"
+    },
+    "/photos/{photoId}": {
+      "schema": "Photo",
+      "description": "High resolution photos with photographer credits and multi-resolution URLs"
+    },
+    "/photos/{photoId}/favorites/{userId}": {
+      "schema": "Favorite",
+      "description": "User saved favorites per photo"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Real-time game scores and photo publication notifications"
+    }
+  }
+}

@@ -1,0 +1,319 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-sage-hint: #F4F7F4;
+  --color-mint: #C4D4C0;
+  --color-sage: #8EA58C;
+  --color-moss: #687F63;
+  --color-evergreen: #2B4234;
+  --color-evergreen-dark: #1C2D23;
+  --color-evergreen-deep: #111B15;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-coolvetica: "Coolvetica", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-tempting: "Tempting", "Source Serif 4", "Playfair Display", Georgia, serif;
+  --font-display: "Coolvetica", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@layer utilities {
+  .font-coolvetica {
+    font-family: "Coolvetica", -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.02em;
+  }
+  
+  .font-tempting {
+    font-family: "Tempting", "Source Serif 4", "Playfair Display", Georgia, serif;
+    letter-spacing: 0.01em;
+  }
+
+  .font-source-serif {
+    font-family: "Source Serif 4", Georgia, serif;
+  }
+
+  /* Apple-grade glass and frosted blur (High Vibrancy in Light Mode & Deep Dark Glass) */
+  .apple-glass {
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(32px) saturate(210%);
+    -webkit-backdrop-filter: blur(32px) saturate(210%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.05), inset 0 1px 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .dark .apple-glass {
+    background: rgba(12, 12, 16, 0.82);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.6), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .apple-glass-card {
+    background: rgba(255, 255, 255, 0.68);
+    backdrop-filter: blur(30px) saturate(210%);
+    -webkit-backdrop-filter: blur(30px) saturate(210%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.06), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .dark .apple-glass-card {
+    background: rgba(18, 18, 22, 0.82);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.65), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .ultra-glass {
+    background: rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(38px) saturate(225%);
+    -webkit-backdrop-filter: blur(38px) saturate(225%);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 18px 50px -10px rgba(0, 0, 0, 0.07), inset 0 1.5px 2px 0 rgba(255, 255, 255, 1);
+  }
+
+  .dark .ultra-glass {
+    background: rgba(14, 15, 20, 0.78);
+    backdrop-filter: blur(38px) saturate(220%);
+    -webkit-backdrop-filter: blur(38px) saturate(220%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 18px 50px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-card-hover {
+    transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 600ms cubic-bezier(0.16, 1, 0.3, 1), border-color 600ms ease;
+  }
+  .glass-card-hover:hover {
+    transform: translateY(-5px) scale(1.008);
+    box-shadow: 0 26px 55px -12px rgba(16, 185, 129, 0.18), inset 0 1px 2px 0 rgba(255, 255, 255, 1);
+  }
+  .dark .glass-card-hover:hover {
+    transform: translateY(-5px) scale(1.008);
+    box-shadow: 0 26px 55px -12px rgba(16, 185, 129, 0.28), inset 0 1px 2px 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-pill {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.04), inset 0 1px 0.5px rgba(255, 255, 255, 0.95);
+  }
+
+  .dark .glass-pill {
+    background: rgba(26, 26, 32, 0.8);
+    backdrop-filter: blur(24px) saturate(190%);
+    -webkit-backdrop-filter: blur(24px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0.5px rgba(255, 255, 255, 0.15);
+  }
+
+  /* Slow, silky smooth, pleasing background ambient lighting */
+  @keyframes orbDrift {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(35px, -30px) scale(1.08);
+    }
+    66% {
+      transform: translate(-30px, 25px) scale(0.94);
+    }
+  }
+
+  @keyframes orbDriftReverse {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(-40px, 35px) scale(1.06);
+    }
+    66% {
+      transform: translate(30px, -25px) scale(0.93);
+    }
+  }
+
+  .animate-orb-drift {
+    animation: orbDrift 34s ease-in-out infinite;
+  }
+  .animate-orb-drift-reverse {
+    animation: orbDriftReverse 42s ease-in-out infinite;
+  }
+
+  .silky-smooth {
+    transition: all 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Apple signature slow, silky smooth, pleasing easing animations */
+  @keyframes appleFadeIn {
+    0% {
+      opacity: 0;
+      transform: translateY(16px) scale(0.985);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes appleScaleIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.93);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes appleSlideUp {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 22px, 0);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes appleBlurIn {
+    0% {
+      opacity: 0;
+      filter: blur(16px);
+      transform: scale(0.96);
+    }
+    100% {
+      opacity: 1;
+      filter: blur(0);
+      transform: scale(1);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-apple-fade-in {
+    animation: appleFadeIn 1.05s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-apple-scale-in {
+    animation: appleScaleIn 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-apple-slide-up {
+    animation: appleSlideUp 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-apple-blur-in {
+    animation: appleBlurIn 1.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-fade-in-up {
+    animation: appleSlideUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Progressive lazy blur-up for images - Silky, pleasing reveal */
+  .img-blur-loading {
+    filter: blur(20px);
+    transform: scale(1.06);
+    transition: filter 1.1s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .img-blur-loaded {
+    filter: blur(0);
+    transform: scale(1);
+    transition: filter 1.1s cubic-bezier(0.16, 1, 0.3, 1), transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite;
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Absolute guarantee: Dark mode spreads 100% across the full viewport and root */
+  html.dark,
+  body.dark {
+    background-color: #080808 !important;
+    color: #f5f5f4 !important;
+  }
+  
+  /* Masonry helper classes */
+  .gallery-columns {
+    column-count: 1;
+    column-gap: 1.25rem;
+  }
+
+  @media (min-width: 640px) {
+    .gallery-columns {
+      column-count: 2;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .gallery-columns {
+      column-count: 3;
+    }
+  }
+
+  @media (min-width: 1440px) {
+    .gallery-columns {
+      column-count: 4;
+    }
+  }
+
+  .gallery-item {
+    break-inside: avoid;
+    margin-bottom: 1.25rem;
+  }
+}
+
+/* Custom delicate scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #059669;
+}
+
