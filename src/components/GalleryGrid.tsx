@@ -16,7 +16,8 @@ import {
   Trash2,
   RotateCcw,
   Calendar,
-  ArrowUpRight
+  ArrowUpRight,
+  Contrast
 } from 'lucide-react';
 import { Photo, SupportedLanguage } from '../types';
 import { CursorParallaxImage, ScrollParallaxReveal } from './ParallaxAndScroll';
@@ -30,6 +31,30 @@ function formatCaptureDate(dateStr: string): string {
     day: 'numeric',
     year: 'numeric'
   });
+}
+
+function mapAspectRatioToClass(
+  ratio: Photo['aspectRatio'] | undefined,
+  fallback: string
+): string {
+  switch (ratio) {
+    case '16:10':
+      return 'aspect-16/10';
+    case '16:9':
+      return 'aspect-16/9';
+    case '4:3':
+      return 'aspect-4/3';
+    case '3:2':
+      return 'aspect-3/2';
+    case '1:1':
+      return 'aspect-square';
+    case '4:5':
+      return 'aspect-4/5';
+    case '2:3':
+      return 'aspect-2/3';
+    default:
+      return fallback;
+  }
 }
 
 function formatCategoryLabel(cat: string): string {
@@ -129,6 +154,8 @@ interface GalleryGridProps {
   onRestoreExamplePhotos?: () => void;
   viewMode: 'masonry' | 'grid';
   currentLang: SupportedLanguage;
+  highContrastMode?: boolean;
+  onToggleHighContrast?: () => void;
 }
 
 export const GalleryGrid: React.FC<GalleryGridProps> = ({
@@ -140,7 +167,9 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
   onDeletePhoto,
   onDeleteAllExamplePhotos,
   onRestoreExamplePhotos,
-  viewMode
+  viewMode,
+  highContrastMode = false,
+  onToggleHighContrast
 }) => {
   const [downloadMenuPhotoId, setDownloadMenuPhotoId] = useState<string | null>(null);
   const [quickViewPhoto, setQuickViewPhoto] = useState<Photo | null>(null);
@@ -198,6 +227,9 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
     const exif = extractEducationalExif(photo);
     const isInlineHudOpen = inlineHudPhotoIds.includes(photo.id);
     const extraCount = (photo.collaborators?.length || 0) + 1;
+    const resolvedAspectClass = photo.objectFit
+      ? mapAspectRatioToClass(photo.aspectRatio, aspectClass)
+      : aspectClass;
 
     return (
       <ScrollParallaxReveal key={photo.id} speed={parallaxSpeed}>
@@ -210,8 +242,19 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
               intensity={20}
               tiltIntensity={3}
               scrollParallaxIntensity={28}
+              objectFit={photo.objectFit || 'cover'}
+              objectPosition={photo.objectPosition || '50% 50%'}
               onClick={() => onSelectPhoto(photo)}
-              containerClassName={`w-full ${aspectClass} bg-stone-200 dark:bg-stone-900 cursor-pointer select-none shadow-lg`}
+              className={
+                highContrastMode
+                  ? 'contrast-135 brightness-115 saturate-115 transition-[filter] duration-300'
+                  : 'transition-[filter] duration-300'
+              }
+              containerClassName={`w-full ${resolvedAspectClass} bg-stone-200 dark:bg-stone-900 cursor-pointer select-none shadow-lg ${
+                highContrastMode
+                  ? 'ring-2 ring-black dark:ring-white shadow-2xl'
+                  : ''
+              }`}
             >
               {/* Subtle Top-Left Editorial Indicator */}
               {hasCollaborators && (
@@ -494,20 +537,45 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
           <div className="flex items-end justify-between gap-4 pt-1">
             <div className="space-y-2 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2.5 py-1 rounded-md bg-stone-200/75 dark:bg-white/10 text-[11px] font-sans text-stone-700 dark:text-stone-300">
+                <span
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-sans ${
+                    highContrastMode
+                      ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
+                      : 'bg-stone-200/75 dark:bg-white/10 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
                   {formatCategoryLabel(photo.category)}
                 </span>
-                <span className="px-2.5 py-1 rounded-md bg-stone-200/75 dark:bg-white/10 text-[11px] font-sans text-stone-700 dark:text-stone-300">
+                <span
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-sans ${
+                    highContrastMode
+                      ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
+                      : 'bg-stone-200/75 dark:bg-white/10 text-stone-700 dark:text-stone-300'
+                  }`}
+                >
                   {photo.camera}
                 </span>
-                <span className="px-2 py-1 rounded-md bg-stone-200/75 dark:bg-white/10 text-[11px] font-mono text-stone-600 dark:text-stone-300">
+                <span
+                  className={`px-2 py-1 rounded-md text-[11px] font-mono ${
+                    highContrastMode
+                      ? 'bg-amber-400 text-black font-bold'
+                      : 'bg-stone-200/75 dark:bg-white/10 text-stone-600 dark:text-stone-300'
+                  }`}
+                >
                   {extraCount}+
                 </span>
+                {highContrastMode && (
+                  <span className="px-2 py-1 rounded-md bg-emerald-500 text-black text-[10px] font-mono font-bold uppercase tracking-wider">
+                    Low-Light Boost
+                  </span>
+                )}
               </div>
 
               <h4
                 onClick={() => onSelectPhoto(photo)}
-                className={`font-sans font-normal ${titleSizeClass} text-stone-900 dark:text-white tracking-tight cursor-pointer hover:opacity-75 transition-opacity duration-300 truncate`}
+                className={`font-sans ${
+                  highContrastMode ? 'font-semibold' : 'font-normal'
+                } ${titleSizeClass} text-stone-900 dark:text-white tracking-tight cursor-pointer hover:opacity-75 transition-opacity duration-300 truncate`}
               >
                 {photo.title.split(':')[0]} - {photo.photographerName.split(' ')[0]}
               </h4>
@@ -515,7 +583,11 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
 
             <button
               onClick={() => onSelectPhoto(photo)}
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-stone-300 dark:border-white/25 flex items-center justify-center text-stone-900 dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all duration-300 shrink-0 active:scale-95"
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border flex items-center justify-center transition-all duration-300 shrink-0 active:scale-95 ${
+                highContrastMode
+                  ? 'border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black'
+                  : 'border-stone-300 dark:border-white/25 text-stone-900 dark:text-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'
+              }`}
               aria-label={`Inspect ${photo.title}`}
             >
               <ArrowUpRight className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -534,6 +606,25 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
 
   return (
     <div id="gallery-grid-container" className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 pb-24 pt-6">
+      {highContrastMode && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black border-2 border-amber-400 text-xs shadow-lg animate-apple-fade-in">
+          <div className="flex items-center gap-2.5">
+            <Contrast className="w-4 h-4 text-amber-400 dark:text-black shrink-0" />
+            <span className="font-semibold">
+              High Contrast Mode Active — Low-light school event photos (Pirith Night, indoor assemblies, stage captures) have enhanced shadow detail (+15% brightness, +35% contrast).
+            </span>
+          </div>
+          {onToggleHighContrast && (
+            <button
+              type="button"
+              onClick={onToggleHighContrast}
+              className="px-3 py-1 rounded-full bg-amber-400 text-black font-mono text-[11px] font-bold hover:opacity-90 transition-opacity shrink-0"
+            >
+              Disable High Contrast
+            </button>
+          )}
+        </div>
+      )}
       {onDeleteAllExamplePhotos && (
         <div className="mb-14 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl liquid-glass text-xs">
           <span className="text-stone-600 dark:text-white/75 font-medium">

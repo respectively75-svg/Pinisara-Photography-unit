@@ -23,7 +23,9 @@ export interface Photo {
   webUrl: string;
   mobileUrl?: string;
   thumbnailUrl: string;
-  aspectRatio: '3:2' | '16:9' | '4:5' | '1:1' | '2:3';
+  aspectRatio: '3:2' | '16:9' | '16:10' | '4:3' | '4:5' | '1:1' | '2:3';
+  objectFit?: 'cover' | 'contain' | 'fill';
+  objectPosition?: string;
   resolution?: string;
   fileSizeOriginal?: string;
   fileSizeWeb?: string;

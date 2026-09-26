@@ -40,6 +40,7 @@ import {
   ChroniclePage,
   LetsTalkPage
 } from './components/ExtraProfessionalPages';
+import { PhpHtmlSitePage } from './components/PhpHtmlSitePage';
 import { Camera, Smartphone, ArrowRight, ArrowUp, ShieldCheck, Sparkles, Coins, Layers, Activity as ActivityIcon, Trash2, RotateCcw } from 'lucide-react';
 
 export default function App() {
@@ -88,6 +89,7 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'masonry' | 'grid'>('masonry');
   const [onlyFavorites, setOnlyFavorites] = useState<boolean>(false);
   const [onlyCollaborations, setOnlyCollaborations] = useState<boolean>(false);
+  const [highContrastMode, setHighContrastMode] = useState<boolean>(false);
 
   // Photos, Events & Categories Data
   const [photos, setPhotos] = useState<Photo[]>(INITIAL_PHOTOS);
@@ -482,12 +484,34 @@ export default function App() {
                     </button>
                     <button
                       onClick={() => {
+                        const shelfEl = document.getElementById('spine-carousel-section');
+                        if (shelfEl) {
+                          shelfEl.scrollIntoView({ behavior: 'smooth' });
+                        } else {
+                          setActivePage('carousel');
+                        }
+                      }}
+                      className="px-4 py-2 rounded-full glass-pill text-stone-700 dark:text-white text-xs font-medium transition-all duration-500"
+                    >
+                      Monograph Bookshelf ↓
+                    </button>
+                    <button
+                      onClick={() => {
                         setActivePage('albums');
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                       }}
-                      className="px-4 py-2 rounded-full glass-pill text-stone-700 dark:text-white text-xs font-medium transition-all duration-700"
+                      className="px-4 py-2 rounded-full glass-pill text-stone-700 dark:text-white text-xs font-medium transition-all duration-500"
                     >
                       Manage Event Albums
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActivePage('php-site');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="px-4 py-2 rounded-full glass-pill text-emerald-700 dark:text-emerald-400 text-xs font-mono font-semibold transition-all duration-500"
+                    >
+                      PHP / HTML5 Site Bundle →
                     </button>
                     <a
                       href="#archive-controls-anchor"
@@ -670,6 +694,12 @@ export default function App() {
             </div>
           </section>
 
+          {/* MONOGRAPH BOOKSHELF: "CHAPTER 4 · UPCOMING RELEASES" Spine-to-Cover Bookshelf */}
+          <SpineCarouselSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          />
+
           {/* SEAMLESS ANIMATION BETWEEN PAGE 1 & PAGE 2 (Unclipped Viewfinder Showcase + Student Gear Breakdown) */}
           <SeamlessPortalSection
             photos={photos}
@@ -685,12 +715,6 @@ export default function App() {
 
           {/* PAGE 3 SCROLLING DESIGN: "Featured Stories" (01)-(04) Split Screen + Center X/Y Coordinate Loupe */}
           <FeaturedStoriesSection
-            photos={photos}
-            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
-          />
-
-          {/* PAGE 4 PHOTO CAROUSEL: "CHAPTER 4 · UPCOMING RELEASES" Spine-to-Cover Monograph Carousel */}
-          <SpineCarouselSection
             photos={photos}
             onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
           />
@@ -821,6 +845,18 @@ export default function App() {
             onToggleOnlyFavorites={() => setOnlyFavorites(prev => !prev)}
             onlyCollaborations={onlyCollaborations}
             onToggleOnlyCollaborations={() => setOnlyCollaborations(prev => !prev)}
+            highContrastMode={highContrastMode}
+            onToggleHighContrast={() => {
+              setHighContrastMode(prev => {
+                const next = !prev;
+                showToast(
+                  next
+                    ? 'High Contrast enabled — low-light school event photos enhanced.'
+                    : 'High Contrast disabled.'
+                );
+                return next;
+              });
+            }}
             onResetFilters={() => {
               setSelectedCategory('all');
               setSelectedPhotographer('all');
@@ -829,6 +865,7 @@ export default function App() {
               setSearchQuery('');
               setOnlyFavorites(false);
               setOnlyCollaborations(false);
+              setHighContrastMode(false);
             }}
           />
 
@@ -845,6 +882,8 @@ export default function App() {
               onRestoreExamplePhotos={handleRestoreExamplePhotos}
               viewMode={viewMode}
               currentLang={currentLang}
+              highContrastMode={highContrastMode}
+              onToggleHighContrast={() => setHighContrastMode(prev => !prev)}
             />
           </main>
 
@@ -867,17 +906,23 @@ export default function App() {
         </>
       )}
 
-      {/* DEDICATED CREATIVE OUTPUT PAGE (Video 1) */}
+      {/* DEDICATED CREATIVE OUTPUT PAGE (Video 1 + Monograph Bookshelf) */}
       {activePage === 'output' && (
-        <CreativeOutputSection
-          photos={photos}
-          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
-          onDeletePhoto={handleDeletePhoto}
-          onExploreMore={() => {
-            setActivePage('stories');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        />
+        <>
+          <CreativeOutputSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+            onDeletePhoto={handleDeletePhoto}
+            onExploreMore={() => {
+              setActivePage('stories');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+          <SpineCarouselSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          />
+        </>
       )}
 
       {/* DEDICATED SCOPE & GEAR PAGE */}
@@ -1041,6 +1086,9 @@ export default function App() {
 
       {/* DEDICATED LET'S TALK / REQUEST COVERAGE PAGE */}
       {activePage === 'contact' && <LetsTalkPage />}
+
+      {/* DEDICATED PHP / HTML5 STANDALONE SITE BUNDLE & PREVIEW PAGE */}
+      {activePage === 'php-site' && <PhpHtmlSitePage />}
 
       </div>
 
@@ -1209,6 +1257,15 @@ export default function App() {
               className="hover:text-stone-900 dark:hover:text-white transition-colors"
             >
               Let's Talk
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('php-site');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-emerald-700 dark:text-emerald-400 font-mono font-semibold hover:opacity-75 transition-opacity"
+            >
+              PHP / HTML Site
             </button>
             <button 
               onClick={() => {

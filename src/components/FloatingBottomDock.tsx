@@ -22,9 +22,9 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   const dockItems: { id: AppPage; label: string }[] = [
     { id: 'gallery', label: 'Home' },
     { id: 'output', label: 'Works' },
+    { id: 'carousel', label: 'Bookshelf' },
     { id: 'albums', label: 'Events' },
     { id: 'stories', label: 'Stories' },
-    { id: 'team', label: 'Team' },
     { id: 'upload', label: 'Publish' }
   ];
 

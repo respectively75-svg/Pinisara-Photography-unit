@@ -16,7 +16,8 @@ import {
   Vote,
   Radio,
   Scale,
-  Users
+  Users,
+  Contrast
 } from 'lucide-react';
 import { CategoryInfo, SupportedLanguage, CreatorProfile } from '../types';
 
@@ -43,6 +44,8 @@ interface FilterBarProps {
   onToggleOnlyFavorites: () => void;
   onlyCollaborations?: boolean;
   onToggleOnlyCollaborations?: () => void;
+  highContrastMode?: boolean;
+  onToggleHighContrast?: () => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -57,7 +60,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   onResetFilters,
   selectedPhotographer,
   onlyCollaborations = false,
-  onToggleOnlyCollaborations = () => {}
+  onToggleOnlyCollaborations = () => {},
+  highContrastMode = false,
+  onToggleHighContrast = () => {}
 }) => {
   const getCategoryIcon = (iconName: string) => {
     switch (iconName) {
@@ -77,7 +82,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     }
   };
 
-  const hasActiveFilters = selectedCategory !== 'all' || selectedPhotographer !== 'all' || onlyCollaborations;
+  const hasActiveFilters =
+    selectedCategory !== 'all' ||
+    selectedPhotographer !== 'all' ||
+    onlyCollaborations ||
+    highContrastMode;
 
   return (
     <div id="gallery-filter-toolbar" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-3">
@@ -113,9 +122,9 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         })}
       </div>
 
-      {/* Secondary Controls Bar with Collaborative Shoots Toggle */}
-      <div className="flex items-center justify-between gap-3 pt-2 border-t border-stone-200/60 dark:border-white/10 text-xs">
-        <div className="flex items-center gap-3">
+      {/* Secondary Controls Bar with Collaborative Shoots & High Contrast Toggles */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-200/60 dark:border-white/10 text-xs">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <span className="text-stone-500 dark:text-stone-400 text-xs font-mono tabular-nums">
             {totalResults} {totalResults === 1 ? 'capture' : 'captures'}
           </span>
@@ -131,6 +140,28 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           >
             <Users className="w-3 h-3 text-emerald-500" />
             <span>Collaborations Only</span>
+          </button>
+
+          {/* High Contrast Toggle Button for Low-Light School Event Photos */}
+          <button
+            id="filter-high-contrast-btn"
+            type="button"
+            onClick={onToggleHighContrast}
+            aria-pressed={highContrastMode}
+            title="Enhance visibility, shadow detail, and luminance contrast for low-light school event photos"
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 active:scale-95 ${
+              highContrastMode
+                ? 'bg-amber-400 text-black dark:bg-white dark:text-black border border-black dark:border-white shadow-sm font-semibold'
+                : 'glass-pill text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white'
+            }`}
+          >
+            <Contrast className={`w-3.5 h-3.5 ${highContrastMode ? 'text-black' : 'text-amber-500 dark:text-amber-400'}`} />
+            <span>High Contrast</span>
+            {highContrastMode && (
+              <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-black/15 text-black font-bold">
+                ON
+              </span>
+            )}
           </button>
 
           {hasActiveFilters && (

@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
+import fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 
@@ -26,6 +27,39 @@ app.get('/api/health', (req: Request, res: Response) => {
     service: 'School Gallery & Athletics Hub API',
     timestamp: new Date().toISOString()
   });
+});
+
+// 1b. PHP & HTML Standalone Site Download & Source Endpoints
+app.get('/api/php-site/download-php', (req: Request, res: Response) => {
+  const phpPath = path.join(process.cwd(), 'public', 'php-site', 'index.php');
+  if (!fs.existsSync(phpPath)) {
+    return res.status(404).json({ error: 'index.php not found' });
+  }
+  res.setHeader('Content-Type', 'application/x-httpd-php; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="index.php"');
+  res.sendFile(phpPath);
+});
+
+app.get('/api/php-site/download-html', (req: Request, res: Response) => {
+  const htmlPath = path.join(process.cwd(), 'public', 'php-site', 'index.html');
+  if (!fs.existsSync(htmlPath)) {
+    return res.status(404).json({ error: 'index.html not found' });
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="index.html"');
+  res.sendFile(htmlPath);
+});
+
+app.get('/api/php-site/source', (req: Request, res: Response) => {
+  try {
+    const phpPath = path.join(process.cwd(), 'public', 'php-site', 'index.php');
+    const htmlPath = path.join(process.cwd(), 'public', 'php-site', 'index.html');
+    const phpSource = fs.existsSync(phpPath) ? fs.readFileSync(phpPath, 'utf-8') : '';
+    const htmlSource = fs.existsSync(htmlPath) ? fs.readFileSync(htmlPath, 'utf-8') : '';
+    res.json({ phpSource, htmlSource });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read PHP/HTML source files' });
+  }
 });
 
 // 2. Direct High-Resolution Download proxy endpoint

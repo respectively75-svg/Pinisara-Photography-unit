@@ -22,7 +22,8 @@ import {
   Compass,
   Award,
   Clock,
-  MessageSquare
+  MessageSquare,
+  Code2
 } from 'lucide-react';
 import { SupportedLanguage, UserProfile } from '../types';
 import { CURRENT_USER } from '../data/mockData';
@@ -43,7 +44,8 @@ export type AppPage =
   | 'team'
   | 'favorites'
   | 'upload'
-  | 'contact';
+  | 'contact'
+  | 'php-site';
 
 interface NavbarProps {
   activePage: AppPage;
@@ -81,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'scope', label: 'Scope', icon: <Compass className="w-3.5 h-3.5" /> },
     { id: 'stories', label: 'Stories', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'albums', label: 'Events & Albums', icon: <Images className="w-3.5 h-3.5" /> },
-    { id: 'carousel', label: 'Carousel', icon: <Columns className="w-3.5 h-3.5" /> },
+    { id: 'carousel', label: 'Bookshelf', icon: <Columns className="w-3.5 h-3.5" /> },
     { id: 'bts', label: 'Behind the Lens', icon: <Camera className="w-3.5 h-3.5" /> },
     { id: 'exhibitions', label: 'Hall of Fame', icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'chronicle', label: 'Timeline', icon: <Clock className="w-3.5 h-3.5" /> },
@@ -89,6 +91,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'activity', label: 'Activity', icon: <Activity className="w-3.5 h-3.5" /> },
     { id: 'team', label: 'Team', icon: <Users className="w-3.5 h-3.5" /> },
     { id: 'favorites', label: 'Favorites', icon: <Heart className="w-3.5 h-3.5" /> },
+    { id: 'php-site', label: 'PHP / HTML', icon: <Code2 className="w-3.5 h-3.5" /> },
     { id: 'contact', label: "Let's Talk", icon: <MessageSquare className="w-3.5 h-3.5" /> },
   ];
 
