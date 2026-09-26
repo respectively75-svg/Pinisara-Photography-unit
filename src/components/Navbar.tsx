@@ -22,8 +22,7 @@ import {
   Compass,
   Award,
   Clock,
-  MessageSquare,
-  Code2
+  MessageSquare
 } from 'lucide-react';
 import { SupportedLanguage, UserProfile } from '../types';
 import { CURRENT_USER } from '../data/mockData';
@@ -44,8 +43,7 @@ export type AppPage =
   | 'team'
   | 'favorites'
   | 'upload'
-  | 'contact'
-  | 'php-site';
+  | 'contact';
 
 interface NavbarProps {
   activePage: AppPage;
@@ -83,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'scope', label: 'Scope', icon: <Compass className="w-3.5 h-3.5" /> },
     { id: 'stories', label: 'Stories', icon: <BookOpen className="w-3.5 h-3.5" /> },
     { id: 'albums', label: 'Events & Albums', icon: <Images className="w-3.5 h-3.5" /> },
-    { id: 'carousel', label: 'Bookshelf', icon: <Columns className="w-3.5 h-3.5" /> },
+    { id: 'carousel', label: 'Carousel', icon: <Columns className="w-3.5 h-3.5" /> },
     { id: 'bts', label: 'Behind the Lens', icon: <Camera className="w-3.5 h-3.5" /> },
     { id: 'exhibitions', label: 'Hall of Fame', icon: <Award className="w-3.5 h-3.5" /> },
     { id: 'chronicle', label: 'Timeline', icon: <Clock className="w-3.5 h-3.5" /> },
@@ -91,7 +89,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'activity', label: 'Activity', icon: <Activity className="w-3.5 h-3.5" /> },
     { id: 'team', label: 'Team', icon: <Users className="w-3.5 h-3.5" /> },
     { id: 'favorites', label: 'Favorites', icon: <Heart className="w-3.5 h-3.5" /> },
-    { id: 'php-site', label: 'PHP / HTML', icon: <Code2 className="w-3.5 h-3.5" /> },
     { id: 'contact', label: "Let's Talk", icon: <MessageSquare className="w-3.5 h-3.5" /> },
   ];
 
@@ -119,29 +116,29 @@ export const Navbar: React.FC<NavbarProps> = ({
       id="main-header" 
       className="sticky top-0 z-40 w-full liquid-glass border-b border-stone-200/80 dark:border-white/15 dark:text-white transition-colors duration-300"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18 sm:h-20 gap-3 overflow-visible">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-20 gap-2 sm:gap-3">
           
-          {/* Brand Logo - PINISARA PHOTOGRAPHY · PINNAWALA CENTRAL COLLEGE (Unclipped & shrink-0) */}
-          <div className="flex items-center gap-4 sm:gap-6 min-w-0 overflow-visible">
+          {/* Brand Logo - PINISARA PHOTOGRAPHY · PINNAWALA CENTRAL COLLEGE (Responsive & Never Overlapping) */}
+          <div className="flex items-center gap-3 sm:gap-6 min-w-0 flex-1 lg:flex-initial">
             <button
               id="brand-home-btn"
               onClick={() => {
                 onNavigate('gallery');
                 onSearchChange('');
               }}
-              className="flex items-center gap-3 group text-left focus:outline-none shrink-0 whitespace-nowrap overflow-visible"
+              className="flex items-center gap-2.5 sm:gap-3 group text-left focus:outline-none min-w-0"
             >
-              <div className="w-9 h-9 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-xs group-hover:scale-105 transition-all duration-700 shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-xs shrink-0">
                 <Camera className="w-4 h-4" />
               </div>
-              <div className="shrink-0 overflow-visible">
-                <div className="flex items-center gap-1 overflow-visible">
-                  <span className="font-sans font-bold text-base sm:text-lg tracking-tight text-stone-900 dark:text-white whitespace-nowrap">
-                    Pinisara Photography<sup className="text-[10px] font-semibold ml-0.5">®</sup>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1">
+                  <span className="font-sans font-bold text-sm sm:text-lg tracking-tight text-stone-900 dark:text-white truncate">
+                    Pinisara Photography<sup className="text-[9px] sm:text-[10px] font-semibold ml-0.5">®</sup>
                   </span>
                 </div>
-                <p className="text-[10px] text-stone-500 dark:text-white/65 font-mono tracking-wide whitespace-nowrap">
+                <p className="text-[9px] sm:text-[10px] text-stone-500 dark:text-white/65 font-mono tracking-wide truncate">
                   Pinnawala Central College
                 </p>
               </div>
@@ -160,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onNavigate(item.id);
                       if (searchQuery) onSearchChange('');
                     }}
-                    className={`flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap shrink-0 transition-all duration-500 ${
+                    className={`flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap shrink-0 transition-colors duration-200 ${
                       isActive
                         ? 'text-stone-900 dark:text-white font-semibold'
                         : 'text-stone-400 dark:text-white/50 hover:text-stone-900 dark:hover:text-white font-medium'
@@ -201,15 +198,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Right Actions: Credits Indicator, Upload, Dark Mode, Account & Language */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Right Actions: Compact on Mobile to Prevent Clipping */}
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             
-            {/* Visual Credits Indicator in Navigation Bar */}
+            {/* Visual Credits Indicator in Navigation Bar (Desktop/Tablet; available inside menu on mobile) */}
             <button
               id="nav-credits-indicator"
               onClick={onOpenAccountModal}
               title={`You have ${availableCredits} credits. Click to view details and top up.`}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full glass-pill border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all duration-200 group active:scale-95 shadow-2xs"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full glass-pill border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all duration-200 group active:scale-95 shadow-2xs"
             >
               <div className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                 <Coins className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
@@ -217,7 +214,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-mono text-xs font-bold text-amber-900 dark:text-amber-200">
                 {availableCredits}
               </span>
-              <span className="hidden sm:inline text-[10px] text-amber-800/80 dark:text-amber-300/80 font-medium">
+              <span className="hidden md:inline text-[10px] text-amber-800/80 dark:text-amber-300/80 font-medium">
                 cr
               </span>
             </button>
@@ -231,9 +228,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Toggle theme"
             >
               {isDarkMode ? (
-                <Sun className="w-4 h-4 text-amber-400 rotate-0 transition-transform duration-300" />
+                <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-stone-700 -rotate-12 transition-transform duration-300" />
+                <Moon className="w-4 h-4 text-stone-700" />
               )}
             </button>
 
@@ -241,7 +238,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="nav-publish-btn"
               onClick={() => onNavigate('upload')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-semibold active:scale-95 transition-all ${
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-semibold active:scale-95 transition-all ${
                 activePage === 'upload'
                   ? 'bg-emerald-700 text-white shadow-xs'
                   : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 shadow-xs'
@@ -249,7 +246,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Upload className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Publish</span>
-              <span className="sm:hidden">Upload</span>
+              <span className="hidden xs:inline sm:hidden">Upload</span>
             </button>
 
             {/* User Account Avatar Button */}
@@ -266,7 +263,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}>
                 {getInitials(currentUser?.displayName || 'User')}
               </div>
-              <div className="hidden sm:block">
+              <div className="hidden md:block">
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-medium text-stone-900 dark:text-white leading-tight max-w-[85px] truncate">
                     {currentUser?.displayName ? currentUser.displayName.split(' ')[0] : 'Account'}
@@ -281,8 +278,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             </button>
 
-            {/* Language Selector */}
-            <div className="relative">
+            {/* Language Selector (Desktop/Tablet) */}
+            <div className="relative hidden sm:block">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
                 className="p-2 rounded-full text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100/80 dark:hover:bg-white/10 transition-colors"
@@ -318,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="mobile-menu-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
+              className="xl:hidden p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
               aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}

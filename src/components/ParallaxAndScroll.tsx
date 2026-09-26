@@ -5,6 +5,18 @@ interface SmoothScrollControllerProps {
 }
 
 /**
+ * Helper to detect mobile / coarse-pointer touch devices where native OS
+ * hardware-accelerated touch scrolling should run uninhibited.
+ */
+function isCoarseTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+    window.innerWidth < 768
+  );
+}
+
+/**
  * Velocity-based inertia dampening function.
  * Uses frame-rate-independent exponential decay `v(t + dt) = v(t) * exp(-lambda(v) * dt)`
  * so 60Hz, 120Hz ProMotion, 144Hz, and 240Hz displays experience identical physical momentum decay.
@@ -36,7 +48,7 @@ export function applyVelocityInertiaDampening(
   const nextVelocity = velocityPxPerSec * decayFactor;
 
   // Exact analytical integral of v(t) * exp(-lambda * t) over [0, dtSeconds]
-  const stepDisplacement = ((velocityPxPerSec - nextVelocity) / dynamicLambda);
+  const stepDisplacement = (velocityPxPerSec - nextVelocity) / dynamicLambda;
 
   // Remaining total momentum distance from current velocity to 0 (`v / lambda`)
   const remainingMomentum = nextVelocity / dynamicLambda;
@@ -50,9 +62,8 @@ export function applyVelocityInertiaDampening(
 
 /**
  * GPU-Accelerated SmoothScrollController with Velocity-Based Inertia Dampening:
- * - Samples scroll velocity in pixels/second using high-precision frame timestamps so behavior is identical on 60Hz, 120Hz, and 144Hz+ displays.
- * - When the user stops scrolling, calculates the remaining momentum from the final scroll velocity and uses `requestAnimationFrame` to apply exponential decay via `applyVelocityInertiaDampening`.
- * - Applies `will-change: transform` and GPU-composited `translate3d` to `#smooth-scroll-container` and automatically sleeps when momentum reaches zero.
+ * - On desktop displays (60Hz–240Hz), samples scroll velocity in pixels/second and applies frame-rate-independent exponential decay via `applyVelocityInertiaDampening`.
+ * - On mobile / coarse-pointer touch devices, defers directly to native iOS/Android hardware-accelerated touch scrolling so phones experience zero JS scroll lag or full-page GPU layer thrashing.
  */
 export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ children }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -63,6 +74,16 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
     const getContainer = () =>
       containerRef.current ||
       (document.getElementById('smooth-scroll-container') as HTMLDivElement | null);
+
+    // On phones / touch screens, use pure native OS touch momentum without full-page transform layers
+    if (isCoarseTouchDevice()) {
+      const mobileContainer = getContainer();
+      if (mobileContainer) {
+        mobileContainer.style.willChange = 'auto';
+        mobileContainer.style.transform = 'none';
+      }
+      return;
+    }
 
     const initialContainer = getContainer();
     if (initialContainer) {
@@ -77,16 +98,12 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
     let driftOffset = 0;
     let lastAppliedDrift = 0;
     let isScrollingActively = false;
-    let isPointerTouching = false;
-    let lastTouchY = 0;
     let lastInputTimestamp = 0;
     let lastFrameTime = performance.now();
     let rafId: number | null = null;
 
-    // Time window (ms) without scroll events before entering the post-scroll inertia decay phase
     const SCROLL_STOP_THRESHOLD_MS = 42;
-    // Maximum visual GPU cushion displacement (px)
-    const MAX_DRIFT_PX = 16;
+    const MAX_DRIFT_PX = 14;
 
     const startPhysicsLoop = () => {
       if (rafId !== null) return;
@@ -96,7 +113,6 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
     };
 
     const physicsLoop = (now: number) => {
-      // Clamp dt to [0.001s, 0.05s] for consistent behavior across 60Hz–240Hz and background tab resume
       const dt = Math.min(Math.max((now - lastFrameTime) / 1000, 0.001), 0.05);
       lastFrameTime = now;
 
@@ -107,9 +123,7 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
       const timeSinceLastInput = now - lastInputTimestamp;
 
       if (Math.abs(scrollDeltaPx) > 0.05) {
-        // Active scrolling phase: compute instantaneous velocity in px/s
         const instantVelocity = scrollDeltaPx / dt;
-        // Frame-rate-independent exponential smoothing (tau = 28ms)
         const smoothingAlpha = Math.exp(-dt / 0.028);
         velocityPxPerSec =
           velocityPxPerSec * smoothingAlpha + instantVelocity * (1 - smoothingAlpha);
@@ -117,11 +131,9 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
         isScrollingActively = true;
         finalReleaseVelocity = velocityPxPerSec;
 
-        // Calculate live remaining momentum preview from current velocity
         const { remainingMomentum } = applyVelocityInertiaDampening(velocityPxPerSec, dt);
         remainingMomentumPx = remainingMomentum;
-      } else if (isScrollingActively && timeSinceLastInput >= SCROLL_STOP_THRESHOLD_MS && !isPointerTouching) {
-        // User just stopped scrolling: lock in final scroll velocity and initial remaining momentum
+      } else if (isScrollingActively && timeSinceLastInput >= SCROLL_STOP_THRESHOLD_MS) {
         isScrollingActively = false;
         const { nextVelocity, remainingMomentum } = applyVelocityInertiaDampening(
           finalReleaseVelocity,
@@ -130,7 +142,6 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
         velocityPxPerSec = nextVelocity;
         remainingMomentumPx = remainingMomentum;
       } else if (!isScrollingActively) {
-        // Post-scroll inertia coast phase: apply exponential decay on every rAF tick
         const { nextVelocity, remainingMomentum } = applyVelocityInertiaDampening(
           velocityPxPerSec,
           dt
@@ -139,13 +150,11 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
         remainingMomentumPx = remainingMomentum;
       }
 
-      // Convert remaining momentum into a bounded, spring-smoothed GPU translate3d offset
       const rawTargetDrift = Math.max(
         -MAX_DRIFT_PX,
-        Math.min(MAX_DRIFT_PX, -remainingMomentumPx * 0.045)
+        Math.min(MAX_DRIFT_PX, -remainingMomentumPx * 0.04)
       );
 
-      // Frame-rate-independent spring interpolation toward target drift
       const springAlpha = 1 - Math.exp(-18 * dt);
       driftOffset += (rawTargetDrift - driftOffset) * springAlpha;
 
@@ -159,11 +168,12 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
         lastAppliedDrift = roundedDrift;
         const container = getContainer();
         if (container) {
-          container.style.transform = `translate3d(0, ${roundedDrift}px, 0)`;
+          container.style.transform =
+            roundedDrift === 0 ? 'translate3d(0, 0px, 0)' : `translate3d(0, ${roundedDrift}px, 0)`;
         }
       }
 
-      if (velocityPxPerSec !== 0 || driftOffset !== 0 || isPointerTouching) {
+      if (velocityPxPerSec !== 0 || driftOffset !== 0) {
         rafId = requestAnimationFrame(physicsLoop);
       } else {
         rafId = null;
@@ -177,45 +187,8 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
       }
     };
 
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        isPointerTouching = true;
-        lastTouchY = e.touches[0].clientY;
-        lastInputTimestamp = performance.now();
-        startPhysicsLoop();
-      }
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (!isPointerTouching || e.touches.length === 0) return;
-      const now = performance.now();
-      const dtTouch = Math.max((now - lastInputTimestamp) / 1000, 0.004);
-      const currentTouchY = e.touches[0].clientY;
-      const deltaY = lastTouchY - currentTouchY;
-      lastTouchY = currentTouchY;
-      lastInputTimestamp = now;
-
-      const touchInstantVel = deltaY / dtTouch;
-      velocityPxPerSec = velocityPxPerSec * 0.55 + touchInstantVel * 0.45;
-      finalReleaseVelocity = velocityPxPerSec;
-      startPhysicsLoop();
-    };
-
-    const onTouchEnd = () => {
-      isPointerTouching = false;
-      isScrollingActively = false;
-      lastInputTimestamp = performance.now();
-      if (Math.abs(finalReleaseVelocity) > 10) {
-        velocityPxPerSec = finalReleaseVelocity;
-        startPhysicsLoop();
-      }
-    };
-
     window.addEventListener('scroll', onScrollOrWheel, { passive: true });
     window.addEventListener('wheel', onScrollOrWheel, { passive: true });
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: true });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
 
     return () => {
       if (rafId !== null) {
@@ -223,12 +196,10 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
       }
       window.removeEventListener('scroll', onScrollOrWheel);
       window.removeEventListener('wheel', onScrollOrWheel);
-      window.removeEventListener('touchstart', onTouchStart);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('touchend', onTouchEnd);
       const container = getContainer();
       if (container) {
-        container.style.transform = 'translate3d(0, 0px, 0)';
+        container.style.willChange = 'auto';
+        container.style.transform = 'none';
       }
     };
   }, []);
@@ -239,7 +210,6 @@ export const SmoothScrollController: React.FC<SmoothScrollControllerProps> = ({ 
     <div
       id="smooth-scroll-container"
       ref={containerRef}
-      style={{ willChange: 'transform' }}
       className="w-full flex-1 flex flex-col"
     >
       {children}
@@ -263,7 +233,8 @@ interface CursorParallaxImageProps {
 
 /**
  * Interactive Cursor Parallax & Optical Depth Wrapper:
- * Uses direct DOM ref transforms inside requestAnimationFrame (zero React re-renders on mousemove).
+ * - On desktop: uses direct DOM ref transforms inside requestAnimationFrame (zero React re-renders).
+ * - On mobile phones: renders a lightweight single-layer container without 3D perspective or GPU `will-change` overhead so touch scrolling stays fast.
  */
 export const CursorParallaxImage: React.FC<CursorParallaxImageProps> = ({
   src,
@@ -282,6 +253,29 @@ export const CursorParallaxImage: React.FC<CursorParallaxImageProps> = ({
   const tiltRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const rafRef = useRef<number | null>(null);
+  const [isMobileTouch, setIsMobileTouch] = useState<boolean>(() => isCoarseTouchDevice());
+
+  useEffect(() => {
+    setIsMobileTouch(isCoarseTouchDevice());
+  }, []);
+
+  if (isMobileTouch) {
+    return (
+      <div
+        onClick={onClick}
+        className={`relative overflow-hidden ${containerClassName}`}
+      >
+        <img
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          className={`w-full h-full object-cover ${className}`}
+        />
+        {children}
+      </div>
+    );
+  }
 
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (onMouseMove) onMouseMove(e);
@@ -349,7 +343,6 @@ export const CursorParallaxImage: React.FC<CursorParallaxImageProps> = ({
       <div
         ref={tiltRef}
         style={{
-          willChange: 'transform',
           transform: 'rotateX(0deg) rotateY(0deg)'
         }}
         className="w-full h-full relative"
@@ -361,7 +354,6 @@ export const CursorParallaxImage: React.FC<CursorParallaxImageProps> = ({
           loading="lazy"
           decoding="async"
           style={{
-            willChange: 'transform',
             transform: 'translate3d(0px, 0px, 0) scale(1.01)'
           }}
           className={`w-full h-full object-cover ${className}`}
@@ -380,16 +372,17 @@ interface ScrollParallaxRevealProps {
 
 /**
  * GPU-Composited Scroll Reveal Wrapper
- * Uses IntersectionObserver + pure opacity & translate3d (no per-frame blur filters) for 120fps scrolling.
+ * On mobile touch devices, renders directly without extra observer/transform layers to maximize scroll FPS.
  */
 export const ScrollParallaxReveal: React.FC<ScrollParallaxRevealProps> = ({
   children,
   className = ''
 }) => {
   const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState<boolean>(false);
+  const [isVisible, setIsVisible] = useState<boolean>(() => isCoarseTouchDevice());
 
   useEffect(() => {
+    if (isVisible) return;
     const el = ref.current;
     if (!el) return;
 
@@ -407,17 +400,20 @@ export const ScrollParallaxReveal: React.FC<ScrollParallaxRevealProps> = ({
     return () => {
       observer.disconnect();
     };
-  }, []);
+  }, [isVisible]);
+
+  if (isVisible) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <div
       ref={ref}
       style={{
-        willChange: isVisible ? 'auto' : 'transform, opacity',
-        transform: isVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 18px, 0)',
-        opacity: isVisible ? 1 : 0,
+        transform: 'translate3d(0, 14px, 0)',
+        opacity: 0,
         transition:
-          'opacity 600ms cubic-bezier(0.22, 1, 0.36, 1), transform 600ms cubic-bezier(0.22, 1, 0.36, 1)'
+          'opacity 450ms cubic-bezier(0.22, 1, 0.36, 1), transform 450ms cubic-bezier(0.22, 1, 0.36, 1)'
       }}
       className={className}
     >

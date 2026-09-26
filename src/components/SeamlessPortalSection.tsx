@@ -89,58 +89,58 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
           {/* Unclipped Panoramic Frame with Frosted Glass Viewfinder Emblem & Cursor Parallax */}
           <div
             onClick={handlePortalJump}
-            className={`relative w-full max-w-5xl aspect-21/9 rounded-3xl overflow-hidden border border-white/20 shadow-[0_30px_90px_rgba(0,0,0,0.85)] cursor-pointer group transition-all duration-1500 cubic-bezier(0.16, 1, 0.3, 1) ${
-              isPortalExpanding ? 'scale-[1.18] blur-xl opacity-0' : 'scale-100 blur-0 opacity-100'
+            className={`relative w-full max-w-5xl min-h-[260px] sm:min-h-[320px] md:aspect-21/9 rounded-3xl overflow-hidden border border-white/20 shadow-[0_30px_90px_rgba(0,0,0,0.85)] cursor-pointer group transition-all duration-700 ${
+              isPortalExpanding ? 'scale-[1.06] opacity-0' : 'scale-100 opacity-100'
             }`}
             title="Click to glide smoothly to Our Creative Output"
           >
             <CursorParallaxImage
               src={
                 photos[1]?.originalUrl ||
-                'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=2000&q=85'
+                'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1400&q=80'
               }
               alt="Pinisara Photography — Pinnawala Central College"
-              intensity={28}
-              tiltIntensity={5}
-              containerClassName="w-full h-full"
+              intensity={20}
+              tiltIntensity={4}
+              containerClassName="w-full h-full min-h-[260px] sm:min-h-[320px]"
             >
-              {/* Subtle Vignette & Frosted Viewfinder HUD Overlay (Zero SVG Clipping) */}
-              <div className="absolute inset-0 bg-black/35 group-hover:bg-black/20 transition-colors duration-1200 pointer-events-none" />
+              {/* Subtle Vignette & Frosted Viewfinder HUD Overlay (Zero Clipping on Mobile) */}
+              <div className="absolute inset-0 bg-black/45 group-hover:bg-black/25 transition-colors duration-500 pointer-events-none" />
 
               {/* Viewfinder Corner Brackets */}
-              <div className="absolute inset-6 sm:inset-10 pointer-events-none flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div className="w-6 h-6 border-t-2 border-l-2 border-white/70" />
-                  <div className="px-3.5 py-1 rounded-full bg-black/60 backdrop-blur-xl border border-white/20 text-[10px] font-mono uppercase tracking-widest text-white">
+              <div className="absolute inset-3.5 sm:inset-8 md:inset-10 pointer-events-none flex flex-col justify-between gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 border-t-2 border-l-2 border-white/70 shrink-0" />
+                  <div className="px-2.5 sm:px-3.5 py-1 rounded-full bg-black/65 border border-white/20 text-[9px] sm:text-[10px] font-mono uppercase tracking-wider sm:tracking-widest text-white text-center truncate max-w-[80%]">
                     PINISARA VIEWFINDER · NO FANCY STUDIO GEAR
                   </div>
-                  <div className="w-6 h-6 border-t-2 border-r-2 border-white/70" />
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 border-t-2 border-r-2 border-white/70 shrink-0" />
                 </div>
 
                 {/* Center Custom Pinisara Camera & Phone Emblem */}
-                <div className="my-auto mx-auto px-6 py-4 rounded-3xl bg-black/55 backdrop-blur-2xl border border-white/25 flex items-center gap-4 shadow-2xl transition-transform duration-1200 group-hover:scale-105">
-                  <div className="w-11 h-11 rounded-2xl bg-white text-black flex items-center justify-center">
-                    <Camera className="w-5 h-5" />
+                <div className="my-auto mx-auto px-3.5 py-3 sm:px-6 sm:py-4 rounded-2xl sm:rounded-3xl bg-black/70 border border-white/25 flex items-center gap-3 sm:gap-4 shadow-2xl max-w-[94%]">
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white text-black flex items-center justify-center shrink-0">
+                    <Camera className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
-                  <div className="text-left">
-                    <span className="font-sans font-bold text-sm sm:text-base text-white block tracking-tight">
+                  <div className="text-left min-w-0">
+                    <span className="font-sans font-bold text-xs sm:text-base text-white block tracking-tight truncate">
                       Pinisara Photography Society
                     </span>
-                    <span className="font-mono text-[11px] text-white/75 block">
+                    <span className="font-mono text-[10px] sm:text-[11px] text-white/80 block leading-snug">
                       2 Entry-Level DSLRs · 2 Smartphones · Pure Passion
                     </span>
                   </div>
-                  <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/25 text-white flex items-center justify-center">
-                    <Smartphone className="w-5 h-5" />
+                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-white/15 border border-white/25 text-white flex items-center justify-center shrink-0">
+                    <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="w-6 h-6 border-b-2 border-l-2 border-white/70" />
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-white/80 bg-black/50 backdrop-blur-md px-3 py-1 rounded-full">
-                    Move cursor for parallax · Click to enter Works
+                <div className="flex items-center justify-between gap-2">
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 border-b-2 border-l-2 border-white/70 shrink-0" />
+                  <span className="text-[9px] sm:text-[10px] font-mono uppercase tracking-wider sm:tracking-widest text-white/85 bg-black/60 px-2.5 sm:px-3 py-1 rounded-full truncate">
+                    Tap or click to enter Works
                   </span>
-                  <div className="w-6 h-6 border-b-2 border-r-2 border-white/70" />
+                  <div className="w-4 h-4 sm:w-6 sm:h-6 border-b-2 border-r-2 border-white/70 shrink-0" />
                 </div>
               </div>
             </CursorParallaxImage>
@@ -267,19 +267,19 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
               </div>
             </div>
 
-            <div className="relative z-20 pt-4 border-t border-white/15 flex items-center justify-between gap-4">
+            <div className="relative z-20 pt-4 border-t border-white/15 flex items-center justify-between gap-2 sm:gap-4">
               <button
                 onClick={() => currentStudio.photo && onSelectPhoto(currentStudio.photo)}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white hover:text-black backdrop-blur-xl border border-white/20 flex items-center justify-center text-white transition-all duration-700"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white hover:text-black border border-white/20 flex items-center justify-center text-white transition-colors duration-300 shrink-0"
                 title="Inspect Fullscreen"
               >
                 <Maximize2 className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 p-1">
+              <div className="flex items-center rounded-full bg-white/10 border border-white/20 p-1 overflow-x-auto no-scrollbar max-w-full">
                 <button
                   onClick={() => setActiveStudioTab('ceremonial')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-900 ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors duration-300 ${
                     activeStudioTab === 'ceremonial'
                       ? 'bg-white text-black font-semibold'
                       : 'text-white/75 hover:text-white'
@@ -293,7 +293,7 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
 
                 <button
                   onClick={() => setActiveStudioTab('athletics')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-900 ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors duration-300 ${
                     activeStudioTab === 'athletics'
                       ? 'bg-white text-black font-semibold'
                       : 'text-white/75 hover:text-white'
@@ -304,7 +304,7 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
 
                 <button
                   onClick={() => setActiveStudioTab('broadcast')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all duration-900 ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors duration-300 ${
                     activeStudioTab === 'broadcast'
                       ? 'bg-white text-black font-semibold'
                       : 'text-white/75 hover:text-white'
@@ -323,7 +323,7 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
                   const nextIdx = (keys.indexOf(activeStudioTab) + 1) % keys.length;
                   setActiveStudioTab(keys[nextIdx]);
                 }}
-                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white hover:text-black backdrop-blur-xl border border-white/20 flex items-center justify-center text-white transition-all duration-700"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white hover:text-black border border-white/20 flex items-center justify-center text-white transition-colors duration-300 shrink-0"
                 title="Cycle Category"
               >
                 <Plus className="w-4 h-4" />

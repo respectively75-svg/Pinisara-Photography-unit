@@ -105,12 +105,12 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
       id="featured-stories-section"
       className="w-full bg-white dark:bg-black text-stone-900 dark:text-white border-t border-stone-200 dark:border-white/15 transition-colors duration-1000"
     >
-      {/* Top Bar with "Featured Stories" Pill */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-8 flex items-center justify-between border-b border-stone-200 dark:border-white/15">
-        <span className="px-4 py-1.5 rounded-full bg-stone-100 dark:bg-white/10 backdrop-blur-xl border border-transparent dark:border-white/20 text-stone-800 dark:text-white text-xs font-sans font-medium">
+      {/* Top Bar with "Featured Stories" Pill (Unclipped Single-Line on Mobile) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-white/15">
+        <span className="self-start px-4 py-1.5 rounded-full bg-stone-100 dark:bg-white/10 border border-stone-200/80 dark:border-white/20 text-stone-800 dark:text-white text-xs font-sans font-medium whitespace-nowrap shrink-0">
           Featured Stories
         </span>
-        <span className="font-mono text-[11px] uppercase tracking-widest text-stone-400 dark:text-white/65">
+        <span className="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider sm:tracking-widest text-stone-400 dark:text-white/65">
           Pinisara Photography · Pinnawala Central College
         </span>
       </div>
@@ -121,7 +121,7 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
           const coords = story.defaultCoords;
           const mainImg =
             story.mainPhoto?.originalUrl ||
-            'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=2000&q=90';
+            'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1400&q=80';
           const insetImg =
             story.insetPhoto?.thumbnailUrl ||
             story.mainPhoto?.thumbnailUrl ||
@@ -131,12 +131,12 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
             <ScrollParallaxReveal key={story.indexLabel} speed={0.04}>
               <article className="grid grid-cols-1 lg:grid-cols-12 items-stretch">
                 {/* LEFT COLUMN: Giant Index Number (01) + Mixed-Font Title + Honest Student Gear Table */}
-                <div className="lg:col-span-4 p-6 sm:p-10 lg:p-12 flex flex-col justify-between bg-white dark:bg-black border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-white/15">
-                  <div className="font-sans font-light text-6xl sm:text-7xl lg:text-[5.25rem] text-stone-200 dark:text-white/20 tracking-tight leading-none select-none">
+                <div className="lg:col-span-4 p-5 sm:p-10 lg:p-12 flex flex-col justify-between bg-white dark:bg-black border-b lg:border-b-0 lg:border-r border-stone-200 dark:border-white/15">
+                  <div className="font-sans font-light text-5xl sm:text-7xl lg:text-[5.25rem] text-stone-300 dark:text-white/20 tracking-tight leading-none select-none">
                     {story.indexLabel}
                   </div>
 
-                  <div className="pt-12 lg:pt-24 space-y-6">
+                  <div className="pt-6 sm:pt-12 lg:pt-24 space-y-6">
                     <div className="space-y-3">
                       <h3 className="font-sans font-semibold text-2xl sm:text-3xl text-stone-900 dark:text-white tracking-tight">
                         {story.titlePrefix}
