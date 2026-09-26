@@ -1,321 +1,169 @@
 import React, { useState, useRef } from 'react';
-import {
-  Upload,
-  CheckCircle2,
-  CloudUpload,
-  Crop,
-  Image as ImageIcon,
-  Loader2,
-  Sparkles
-} from 'lucide-react';
-import { Photo, CategoryInfo, UserProfile } from '../types';
+import { Upload, CheckCircle2, FileUp, Loader2 } from 'lucide-react';
 import { uploadPhotoFileToFirebaseStorage, savePhotoToFirestore } from '../firebase';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { Photo, UserProfile } from '../types';
 
-interface FirebaseImageUploaderProps {
-  categories: CategoryInfo[];
-  currentUser: UserProfile;
-  onPhotoUploaded: (photo: Photo) => void;
-  compact?: boolean;
+export interface FirebaseImageUploaderProps {
+  currentUser?: UserProfile;
+  defaultCategory?: string;
+  onPhotoUploaded?: (photo: Photo, downloadUrl: string) => void;
 }
 
-const ASPECT_PRESETS: Photo['aspectRatio'][] = [
-  '16:10',
-  '16:9',
-  '3:2',
-  '4:3',
-  '1:1',
-  '4:5',
-  '9:16',
-  '21:9'
-];
-
 export const FirebaseImageUploader: React.FC<FirebaseImageUploaderProps> = ({
-  categories,
   currentUser,
-  onPhotoUploaded,
-  compact = false
+  defaultCategory = 'assembly',
+  onPhotoUploaded
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('assembly');
-  const [aspectRatio, setAspectRatio] = useState<Photo['aspectRatio']>('16:10');
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadedBucketPath, setUploadedBucketPath] = useState<string | null>(null);
-
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [title, setTitle] = useState<string>('');
+  const [category, setCategory] = useState<string>(defaultCategory);
+  const [progress, setProgress] = useState<number>(0);
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadedPhoto, setUploadedPhoto] = useState<Photo | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSelectFile = (file: File) => {
-    if (!file.type.startsWith('image/')) return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setSelectedFile(file);
-    const objUrl = URL.createObjectURL(file);
-    setPreviewUrl(objUrl);
+    setUploadedPhoto(null);
+    setErrorMessage(null);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
     if (!title.trim()) {
-      const cleanTitle = file.name
-        .replace(/\.[^/.]+$/, '')
-        .replace(/[-_]+/g, ' ')
-        .replace(/\b\w/g, (l) => l.toUpperCase());
-      setTitle(cleanTitle);
+      const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      setTitle(baseName.charAt(0).toUpperCase() + baseName.slice(1));
     }
-    setUploadedBucketPath(null);
   };
 
-  const handleUploadToFirebaseBucket = async (e: React.FormEvent) => {
+  const handleUploadToFirebase = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedFile) return;
 
     setIsUploading(true);
-    setUploadProgress(8);
+    setProgress(10);
+    setErrorMessage(null);
 
-    const { url, storagePath } = await uploadPhotoFileToFirebaseStorage(
-      selectedFile,
-      (pct) => setUploadProgress(pct)
-    );
-
-    const newPhoto: Photo = {
-      id: `photo-fb-${Date.now()}`,
-      eventId: `evt-${category}-2026`,
-      title: title.trim() || 'Pinisara Campus Capture',
-      description: `Uploaded securely to Firebase Storage bucket (${firebaseConfig.storageBucket}) by ${
-        currentUser.displayName || 'Pinisara Photographer'
-      }.`,
-      category,
-      originalUrl: url,
-      webUrl: url,
-      mobileUrl: url,
-      thumbnailUrl: url,
-      aspectRatio,
-      objectFit: 'cover',
-      objectPosition: '50% 50%',
-      photographerId: currentUser.userId || 'pinisara_creator',
-      photographerName: currentUser.displayName || 'Pinisara Photographer',
-      photographerRole: currentUser.isCreator
-        ? 'Verified Creator'
-        : 'Community Contributor',
-      camera: currentUser.camera || 'Canon EOS Kiss F',
-      lens: currentUser.lens || '18-55mm IS',
-      settings: '1/1250s · f/4.0 · ISO 400',
-      tags: [category, 'Firebase Storage', '4K Archive', 'Pinisara'],
-      downloadCount: 0,
-      likesCount: 1,
-      dateTaken: new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      moderationStatus: 'approved'
-    };
-
-    // Persist metadata to Firestore so real-time subscribers receive the new photo
     try {
-      await savePhotoToFirestore(newPhoto);
-    } catch {
-      // Handled gracefully if guest
+      const downloadUrl = await uploadPhotoFileToFirebaseStorage(
+        selectedFile,
+        'photos',
+        (pct) => setProgress(pct)
+      );
+
+      const savedPhoto = await savePhotoToFirestore({
+        title: title.trim() || selectedFile.name,
+        category,
+        originalUrl: downloadUrl,
+        webUrl: downloadUrl,
+        thumbnailUrl: downloadUrl,
+        photographerId: currentUser?.userId || 'hasaranga',
+        photographerName: currentUser?.displayName || 'Hasaranga Jayawardhana',
+        photographerRole: currentUser?.affiliation || 'Pinisara Photojournalist',
+        camera: currentUser?.camera || 'Canon EOS Kiss F',
+        lens: currentUser?.lens || '18-55mm IS Kit Lens',
+      });
+
+      setUploadedPhoto(savedPhoto);
+      onPhotoUploaded?.(savedPhoto, downloadUrl);
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to upload image');
+    } finally {
+      setIsUploading(false);
     }
-
-    setUploadedBucketPath(storagePath);
-    setIsUploading(false);
-    onPhotoUploaded(newPhoto);
-
-    setTimeout(() => {
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setTitle('');
-      setUploadProgress(0);
-    }, 1400);
   };
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl liquid-glass border border-stone-200/80 dark:border-white/15 space-y-4 animate-spring-pop">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-2xl accent-glow-btn flex items-center justify-center">
-            <CloudUpload className="w-4.5 h-4.5" />
-          </div>
-          <div>
-            <h3 className="font-source-serif font-semibold text-sm sm:text-base text-stone-900 dark:text-white">
-              Firebase Storage Bucket Direct Uploader
-            </h3>
-            <p className="text-[11px] font-mono text-stone-500 dark:text-white/60">
-              Bucket: {firebaseConfig.storageBucket} · Auto-Updates Live Feed
-            </p>
-          </div>
+    <div className="p-5 rounded-3xl apple-glass border border-stone-200/80 dark:border-white/10 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-stone-900 dark:text-white">
+            Firebase Cloud Archive Uploader
+          </h3>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            Direct upload to Firebase Storage & Firestore metadata sync
+          </p>
         </div>
-
-        <span className="px-2.5 py-1 rounded-full glass-pill text-[10px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-          <Sparkles className="w-3 h-3" />
-          <span>Real-Time Feed Sync</span>
-        </span>
+        {uploadedPhoto && (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            Synced
+          </span>
+        )}
       </div>
 
-      {/* Drag & Drop Zone */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragging(true);
-        }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setIsDragging(false);
-          const file = e.dataTransfer.files?.[0];
-          if (file) handleSelectFile(file);
-        }}
-        onClick={() => fileInputRef.current?.click()}
-        className={`relative rounded-2xl border-2 border-dashed p-5 text-center cursor-pointer transition-all ${
-          isDragging
-            ? 'border-emerald-500 bg-emerald-500/10 scale-[1.01]'
-            : 'border-stone-300 dark:border-white/20 hover:border-emerald-500/70 bg-white/40 dark:bg-white/5'
-        }`}
-      >
+      <form onSubmit={handleUploadToFirebase} className="space-y-3">
         <input
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          onChange={handleFileChange}
           className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleSelectFile(file);
-          }}
         />
 
-        {previewUrl ? (
-          <div className="flex flex-col sm:flex-row items-center gap-4 text-left">
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          className="border-2 border-dashed border-stone-300 dark:border-stone-700 hover:border-emerald-500 rounded-2xl p-4 text-center cursor-pointer transition-colors"
+        >
+          {previewUrl ? (
             <img
               src={previewUrl}
               alt="Preview"
-              className="w-24 h-24 rounded-xl object-cover border border-white/20 shadow-md shrink-0"
+              className="max-h-44 mx-auto rounded-xl object-cover"
             />
-            <div className="space-y-1 min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate">{selectedFile?.name}</p>
-              <p className="text-[11px] font-mono text-stone-500 dark:text-white/60">
-                {selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB` : ''} · Ready
-                for Firebase Storage
+          ) : (
+            <div className="py-4 space-y-1.5">
+              <FileUp className="w-6 h-6 mx-auto text-stone-500 dark:text-stone-400" />
+              <p className="text-xs font-medium text-stone-700 dark:text-stone-300">
+                Select image file to upload to Firebase
               </p>
-              <span className="inline-block text-[11px] text-emerald-600 dark:text-emerald-400 font-medium underline">
-                Click to choose a different photo
-              </span>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-1.5 py-2">
-            <ImageIcon className="w-7 h-7 mx-auto text-stone-400 dark:text-white/50" />
-            <p className="text-xs font-semibold">
-              Drag & drop a photograph here, or{' '}
-              <span className="underline text-emerald-600 dark:text-emerald-400">browse files</span>
-            </p>
-            <p className="text-[11px] text-stone-500 dark:text-white/55 font-mono">
-              Uploads directly to Firebase Storage & publishes to the live gallery feed
-            </p>
-          </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Capture title..."
+            className="px-3 py-2 rounded-xl text-xs bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white"
+          />
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="Category (e.g. assembly)"
+            className="px-3 py-2 rounded-xl text-xs bg-white dark:bg-stone-900 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white"
+          />
+        </div>
+
+        {errorMessage && (
+          <p className="text-xs text-rose-500 font-mono">{errorMessage}</p>
         )}
-      </div>
 
-      {/* Metadata & Aspect Ratio Controls when a file is selected */}
-      {selectedFile && (
-        <form onSubmit={handleUploadToFirebaseBucket} className="space-y-3 animate-apple-fade-in">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <div>
-              <label className="block text-[10px] font-mono uppercase text-stone-500 dark:text-white/65 mb-1">
-                Photograph Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Morning Assembly Flag Hoisting"
-                className="w-full px-3 py-2 text-xs rounded-xl glass-pill text-stone-900 dark:text-white focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-mono uppercase text-stone-500 dark:text-white/65 mb-1">
-                Event Category
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-xl glass-pill text-stone-900 dark:text-white bg-transparent focus:outline-none"
-              >
-                {categories
-                  .filter((c) => c.id !== 'all')
-                  .map((c) => (
-                    <option key={c.id} value={c.id} className="text-black">
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Aspect Ratio Selector */}
-          {!compact && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-mono uppercase text-stone-500 dark:text-white/65 flex items-center gap-1 mr-1">
-                <Crop className="w-3 h-3" /> Ratio:
-              </span>
-              {ASPECT_PRESETS.map((ratio) => (
-                <button
-                  key={ratio}
-                  type="button"
-                  onClick={() => setAspectRatio(ratio)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-mono transition-all ${
-                    aspectRatio === ratio
-                      ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                      : 'glass-pill'
-                  }`}
-                >
-                  {ratio}
-                </button>
-              ))}
-            </div>
+        <button
+          type="submit"
+          disabled={!selectedFile || isUploading}
+          className="w-full py-2.5 px-4 rounded-xl bg-stone-900 dark:bg-white text-white dark:text-stone-900 text-xs font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Uploading ({progress}%)...</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-4 h-4" />
+              <span>Upload to Firebase Archive</span>
+            </>
           )}
-
-          {/* Upload Progress Bar */}
-          {isUploading && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-[11px] font-mono">
-                <span>Uploading to Firebase Storage bucket...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-stone-200 dark:bg-white/10 overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 transition-all duration-200 rounded-full"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
-
-          {uploadedBucketPath && (
-            <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span className="font-mono text-[11px] truncate">
-                Stored in bucket: {uploadedBucketPath} · Gallery Feed Updated!
-              </span>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isUploading}
-            className="w-full py-2.5 px-4 rounded-2xl accent-glow-btn text-xs font-semibold flex items-center justify-center gap-2 shadow-md"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Uploading to Firebase Storage ({uploadProgress}%)...</span>
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                <span>Upload to Firebase Storage & Publish to Feed (+50 Credits)</span>
-              </>
-            )}
-          </button>
-        </form>
-      )}
+        </button>
+      </form>
     </div>
   );
 };
+
+export default FirebaseImageUploader;

@@ -45,12 +45,12 @@ import { Camera, Smartphone, ArrowRight, ArrowUp, ShieldCheck, Sparkles, Coins, 
 export default function App() {
   // Boot-Up Animation State (Video 3: 0% -> 63% -> 100% with hairline progress bar)
   const [isBooting, setIsBooting] = useState<boolean>(true);
-  // Theme State: Dark Mode with System Preference & LocalStorage Fallback
+  // Theme State: Default to Light Mode
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('pinisara_theme');
-      if (saved) return saved === 'dark';
-      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const saved = localStorage.getItem('pinisara_theme_mode');
+      if (saved === 'dark') return true;
+      return false;
     }
     return false;
   });
@@ -59,11 +59,11 @@ export default function App() {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
       document.body.classList.add('dark');
-      localStorage.setItem('pinisara_theme', 'dark');
+      localStorage.setItem('pinisara_theme_mode', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
       document.body.classList.remove('dark');
-      localStorage.setItem('pinisara_theme', 'light');
+      localStorage.setItem('pinisara_theme_mode', 'light');
     }
   }, [isDarkMode]);
 

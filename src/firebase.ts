@@ -13,6 +13,7 @@ import {
   getDocFromServer,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   onSnapshot,
   query,
@@ -20,8 +21,15 @@ import {
   limit,
   increment
 } from 'firebase/firestore';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 import {
+  Photo,
   PhotoReactionSummary,
   PhotoComment,
   ReactionType,
@@ -29,10 +37,11 @@ import {
   UserProfile
 } from './types';
 
-// Initialize Firebase App, Firestore (with named database ID), and Auth
+// Initialize Firebase App, Firestore (with named database ID), Storage, and Auth
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
@@ -444,6 +453,198 @@ export async function saveUserProfileToFirestore(user: UserProfile): Promise<voi
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
+}
+
+// Helper to convert a File/Blob into a compressed Data URL as a fallback if Firebase Storage bucket is not provisioned
+async function fileToDataUrlFallback(file: File | Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to read image file as Data URL'));
+      }
+    };
+    reader.onerror = () => reject(reader.error || new Error('FileReader error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Upload a photo File/Blob to Firebase Storage (with automatic Data URL fallback)
+export async function uploadPhotoFileToFirebaseStorage(
+  file: File | Blob,
+  folderOrCallback?: string | ((progress: number) => void),
+  onProgress?: (progress: number) => void
+): Promise<string> {
+  const folder = typeof folderOrCallback === 'string' && folderOrCallback.trim()
+    ? folderOrCallback.trim().replace(/^\/+|\/+$/g, '')
+    : 'photos';
+  const progressCb =
+    typeof folderOrCallback === 'function' ? folderOrCallback : onProgress;
+
+  progressCb?.(15);
+
+  const rawName = file instanceof File && file.name ? file.name : `capture_${Date.now()}.jpg`;
+  const safeName = rawName.replace(/[^a-zA-Z0-9._\-]/g, '_');
+  const objectPath = `${folder}/${Date.now()}_${safeName}`;
+
+  try {
+    progressCb?.(45);
+    const fileRef = storageRef(storage, objectPath);
+    const uploadPromise = uploadBytes(fileRef, file).then((snap) => getDownloadURL(snap.ref));
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Storage upload timed out, using direct data URL fallback')), 4500)
+    );
+    const downloadUrl = await Promise.race([uploadPromise, timeoutPromise]);
+    progressCb?.(100);
+    return downloadUrl;
+  } catch {
+    const fallbackDataUrl = await fileToDataUrlFallback(file);
+    progressCb?.(100);
+    return fallbackDataUrl;
+  }
+}
+
+// Save or update a Photo metadata document in Firestore (/photos/{photoId})
+export async function savePhotoToFirestore(
+  photoData: Partial<Photo> & Record<string, unknown>,
+  customId?: string
+): Promise<Photo> {
+  const rawId =
+    customId ||
+    (typeof photoData.id === 'string' && photoData.id.trim()) ||
+    `photo-${Date.now()}`;
+  const safePhotoId = rawId.replace(/[^a-zA-Z0-9_\-]/g, '-').slice(0, 120);
+  const path = `photos/${safePhotoId}`;
+  const photoRef = doc(db, 'photos', safePhotoId);
+
+  const primaryUrl =
+    (typeof photoData.originalUrl === 'string' && photoData.originalUrl) ||
+    (typeof photoData.webUrl === 'string' && photoData.webUrl) ||
+    (typeof photoData.imageUrl === 'string' && photoData.imageUrl) ||
+    (typeof photoData.url === 'string' && photoData.url) ||
+    'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=2400&q=95';
+
+  const nowIso = new Date().toISOString();
+
+  const normalizedPhoto: Photo = {
+    id: safePhotoId,
+    eventId:
+      (typeof photoData.eventId === 'string' && photoData.eventId) ||
+      'evt-pinisara-gallery',
+    title:
+      ((typeof photoData.title === 'string' && photoData.title.trim()) ||
+        'Pinisara Archive Capture').slice(0, 195),
+    description:
+      ((typeof photoData.description === 'string' && photoData.description.trim()) ||
+        'Captured for the Pinisara Photography official school archive.').slice(0, 950),
+    category:
+      ((typeof photoData.category === 'string' && photoData.category.trim()) ||
+        'assembly').slice(0, 48),
+    originalUrl: primaryUrl,
+    webUrl:
+      (typeof photoData.webUrl === 'string' && photoData.webUrl) || primaryUrl,
+    mobileUrl:
+      (typeof photoData.mobileUrl === 'string' && photoData.mobileUrl) || primaryUrl,
+    thumbnailUrl:
+      (typeof photoData.thumbnailUrl === 'string' && photoData.thumbnailUrl) || primaryUrl,
+    resolution:
+      (typeof photoData.resolution === 'string' && photoData.resolution) ||
+      '4K Ultra HD (3840 × 2160)',
+    aspectRatio:
+      (photoData.aspectRatio as Photo['aspectRatio']) || '16:10',
+    objectFit:
+      (photoData.objectFit as Photo['objectFit']) || 'cover',
+    objectPosition:
+      (typeof photoData.objectPosition === 'string' && photoData.objectPosition) ||
+      '50% 40%',
+    fileSizeOriginal:
+      (typeof photoData.fileSizeOriginal === 'string' && photoData.fileSizeOriginal) ||
+      '18.4 MB RAW',
+    fileSizeWeb:
+      (typeof photoData.fileSizeWeb === 'string' && photoData.fileSizeWeb) ||
+      '1.8 MB',
+    fileSizeMobile:
+      (typeof photoData.fileSizeMobile === 'string' && photoData.fileSizeMobile) ||
+      '520 KB',
+    photographerId:
+      (typeof photoData.photographerId === 'string' && photoData.photographerId) ||
+      auth.currentUser?.uid ||
+      'hasaranga',
+    photographerName:
+      ((typeof photoData.photographerName === 'string' && photoData.photographerName.trim()) ||
+        auth.currentUser?.displayName ||
+        'Hasaranga Jayawardhana').slice(0, 95),
+    photographerRole:
+      (typeof photoData.photographerRole === 'string' && photoData.photographerRole) ||
+      'Pinisara Photojournalist',
+    photographerHandle:
+      (typeof photoData.photographerHandle === 'string' && photoData.photographerHandle) ||
+      '@pinisara_media',
+    camera:
+      (typeof photoData.camera === 'string' && photoData.camera) ||
+      'Canon EOS Kiss F',
+    lens:
+      (typeof photoData.lens === 'string' && photoData.lens) ||
+      '18-55mm IS Kit Lens',
+    settings:
+      (typeof photoData.settings === 'string' && photoData.settings) ||
+      '1/1000s · f/4.0 · ISO 400',
+    tags: Array.isArray(photoData.tags)
+      ? photoData.tags.map((t) => String(t))
+      : ['Pinisara Archive', '4K Official'],
+    downloadCount: Number(photoData.downloadCount || 0),
+    likesCount: Number(photoData.likesCount || 0),
+    dateTaken:
+      (typeof photoData.dateTaken === 'string' && photoData.dateTaken) ||
+      nowIso.split('T')[0],
+    createdAt:
+      (typeof photoData.createdAt === 'string' && photoData.createdAt) ||
+      nowIso,
+    isFavorited: Boolean(photoData.isFavorited),
+  };
+
+  try {
+    await setDoc(photoRef, normalizedPhoto, { merge: true });
+    return normalizedPhoto;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    return normalizedPhoto;
+  }
+}
+
+// Delete a photo document from Firestore
+export async function deletePhotoFromFirestore(photoId: string): Promise<void> {
+  const safePhotoId = photoId.replace(/[^a-zA-Z0-9_\-]/g, '-');
+  const path = `photos/${safePhotoId}`;
+  const photoRef = doc(db, 'photos', safePhotoId);
+  try {
+    await deleteDoc(photoRef);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// Subscribe to published photos stored in Firestore
+export function subscribeToFirestorePhotos(
+  onUpdate: (photos: Photo[]) => void
+) {
+  const colPath = 'photos';
+  const q = query(collection(db, colPath), orderBy('createdAt', 'desc'), limit(100));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const list: Photo[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as Photo);
+      });
+      onUpdate(list);
+    },
+    (error) => {
+      handleFirestoreError(error, OperationType.LIST, colPath);
+    }
+  );
 }
 
 export { signInWithPopup, onAuthStateChanged };
