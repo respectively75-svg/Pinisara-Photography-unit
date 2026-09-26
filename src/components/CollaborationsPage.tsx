@@ -127,10 +127,10 @@ export const CollaborationsPage: React.FC<CollaborationsPageProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-coolvetica text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Joint Photography Projects</span>
+              <span>Pinisara Photography · Joint Projects</span>
             </span>
             <span className="font-tempting italic text-stone-500 dark:text-stone-400 text-sm">
-              Synchronized Multi-Angle Coverage
+              Pinnawala Central College · Synchronized Multi-Angle Coverage
             </span>
           </div>
 
@@ -139,7 +139,7 @@ export const CollaborationsPage: React.FC<CollaborationsPageProps> = ({
           </h1>
 
           <p className="text-stone-600 dark:text-stone-300 text-xs sm:text-sm leading-relaxed max-w-2xl">
-            Pinisara photojournalists frequently cover major school ceremonies and athletic milestones as synchronized multi-camera field crews. Explore collaborative sets documenting the same decisive moment from contrasting optical angles.
+            Pinisara Photography photojournalists at Pinnawala Central College frequently cover major school ceremonies and athletic milestones as synchronized multi-camera field crews. Explore collaborative sets documenting the same decisive moment from contrasting optical angles.
           </p>
         </div>
 

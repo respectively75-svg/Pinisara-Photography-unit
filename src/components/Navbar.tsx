@@ -14,12 +14,36 @@ import {
   Moon,
   Coins,
   Sparkles,
-  Layers
+  Layers,
+  Activity,
+  BookOpen,
+  Aperture,
+  Columns,
+  Compass,
+  Award,
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 import { SupportedLanguage, UserProfile } from '../types';
 import { CURRENT_USER } from '../data/mockData';
 
-export type AppPage = 'gallery' | 'collaborations' | 'team' | 'albums' | 'favorites' | 'upload';
+export type AppPage =
+  | 'gallery'
+  | 'output'
+  | 'scope'
+  | 'stories'
+  | 'albums'
+  | 'carousel'
+  | 'bts'
+  | 'exhibitions'
+  | 'chronicle'
+  | 'optical'
+  | 'collaborations'
+  | 'activity'
+  | 'team'
+  | 'favorites'
+  | 'upload'
+  | 'contact';
 
 interface NavbarProps {
   activePage: AppPage;
@@ -52,11 +76,20 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [showLangMenu, setShowLangMenu] = useState(false);
 
   const navItems: { id: AppPage; label: string; icon: React.ReactNode }[] = [
-    { id: 'gallery', label: 'Gallery', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-    { id: 'collaborations', label: 'Collaborations', icon: <Layers className="w-3.5 h-3.5" /> },
-    { id: 'team', label: 'Photographers', icon: <Users className="w-3.5 h-3.5" /> },
-    { id: 'albums', label: 'Albums', icon: <Images className="w-3.5 h-3.5" /> },
+    { id: 'gallery', label: 'Home', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+    { id: 'output', label: 'Works', icon: <Sparkles className="w-3.5 h-3.5" /> },
+    { id: 'scope', label: 'Scope', icon: <Compass className="w-3.5 h-3.5" /> },
+    { id: 'stories', label: 'Stories', icon: <BookOpen className="w-3.5 h-3.5" /> },
+    { id: 'albums', label: 'Events & Albums', icon: <Images className="w-3.5 h-3.5" /> },
+    { id: 'carousel', label: 'Carousel', icon: <Columns className="w-3.5 h-3.5" /> },
+    { id: 'bts', label: 'Behind the Lens', icon: <Camera className="w-3.5 h-3.5" /> },
+    { id: 'exhibitions', label: 'Hall of Fame', icon: <Award className="w-3.5 h-3.5" /> },
+    { id: 'chronicle', label: 'Timeline', icon: <Clock className="w-3.5 h-3.5" /> },
+    { id: 'collaborations', label: 'Collab', icon: <Layers className="w-3.5 h-3.5" /> },
+    { id: 'activity', label: 'Activity', icon: <Activity className="w-3.5 h-3.5" /> },
+    { id: 'team', label: 'Team', icon: <Users className="w-3.5 h-3.5" /> },
     { id: 'favorites', label: 'Favorites', icon: <Heart className="w-3.5 h-3.5" /> },
+    { id: 'contact', label: "Let's Talk", icon: <MessageSquare className="w-3.5 h-3.5" /> },
   ];
 
   const languages: { code: SupportedLanguage; label: string }[] = [
@@ -81,43 +114,41 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header 
       id="main-header" 
-      className="sticky top-0 z-40 w-full apple-glass border-b border-stone-200/80 dark:border-white/10 dark:text-stone-100 transition-colors duration-300"
+      className="sticky top-0 z-40 w-full liquid-glass border-b border-stone-200/80 dark:border-white/15 dark:text-white transition-colors duration-300"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18 sm:h-20 gap-3">
+        <div className="flex items-center justify-between h-18 sm:h-20 gap-3 overflow-visible">
           
-          {/* Brand Logo - PINISARA PHOTOGRAPHERS */}
-          <div className="flex items-center gap-5 sm:gap-7">
+          {/* Brand Logo - PINISARA PHOTOGRAPHY · PINNAWALA CENTRAL COLLEGE (Unclipped & shrink-0) */}
+          <div className="flex items-center gap-4 sm:gap-6 min-w-0 overflow-visible">
             <button
               id="brand-home-btn"
               onClick={() => {
                 onNavigate('gallery');
                 onSearchChange('');
               }}
-              className="flex items-center gap-3 group text-left focus:outline-none"
+              className="flex items-center gap-3 group text-left focus:outline-none shrink-0 whitespace-nowrap overflow-visible"
             >
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-black dark:bg-stone-800 text-white flex items-center justify-center shadow-xs group-hover:scale-105 group-hover:bg-emerald-700 dark:group-hover:bg-emerald-600 transition-all duration-300">
-                <Camera className="w-4.5 h-4.5 text-white" />
+              <div className="w-9 h-9 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-xs group-hover:scale-105 transition-all duration-700 shrink-0">
+                <Camera className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-coolvetica font-bold text-xl sm:text-2xl tracking-tight text-stone-900 dark:text-white">
-                    PINISARA
-                  </span>
-                  <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider rounded-md bg-emerald-100/80 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300/40 dark:border-emerald-700/40">
-                    Public Archive
+              <div className="shrink-0 overflow-visible">
+                <div className="flex items-center gap-1 overflow-visible">
+                  <span className="font-sans font-bold text-base sm:text-lg tracking-tight text-stone-900 dark:text-white whitespace-nowrap">
+                    Pinisara Photography<sup className="text-[10px] font-semibold ml-0.5">®</sup>
                   </span>
                 </div>
-                <p className="text-[10px] text-stone-500 dark:text-stone-400 font-mono tracking-wide uppercase">
-                  Photographers Collective
+                <p className="text-[10px] text-stone-500 dark:text-white/65 font-mono tracking-wide whitespace-nowrap">
+                  Pinnawala Central College
                 </p>
               </div>
             </button>
 
-            {/* Desktop Navigation Pages */}
-            <nav className="hidden md:flex items-center gap-1 pl-4 border-l border-stone-200 dark:border-white/10">
-              {navItems.map((item) => {
+            {/* Desktop Navigation Pages — Clean comma-separated editorial typography */}
+            <nav className="hidden xl:flex items-center gap-0.5 pl-4 border-l border-stone-200/80 dark:border-white/15 overflow-x-auto no-scrollbar max-w-[42vw]">
+              {navItems.map((item, idx) => {
                 const isActive = activePage === item.id;
+                const isLast = idx === navItems.length - 1;
                 return (
                   <button
                     key={item.id}
@@ -126,21 +157,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onNavigate(item.id);
                       if (searchQuery) onSearchChange('');
                     }}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 ${
+                    className={`flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap shrink-0 transition-all duration-500 ${
                       isActive
-                        ? 'bg-black text-white dark:bg-white dark:text-stone-950 shadow-xs'
-                        : 'text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100/70 dark:hover:bg-white/10'
+                        ? 'text-stone-900 dark:text-white font-semibold'
+                        : 'text-stone-400 dark:text-white/50 hover:text-stone-900 dark:hover:text-white font-medium'
                     }`}
                   >
-                    {item.icon}
-                    <span>{item.label}</span>
+                    <span>{item.label}{!isLast ? ',' : ''}</span>
                     {item.id === 'favorites' && favoritesCount > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                        isActive 
-                          ? 'bg-emerald-500 text-white dark:bg-emerald-600' 
-                          : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-mono'
-                      }`}>
-                        {favoritesCount}
+                      <span className="text-[10px] font-mono text-stone-900 dark:text-white font-bold ml-0.5">
+                        ({favoritesCount})
                       </span>
                     )}
                   </button>

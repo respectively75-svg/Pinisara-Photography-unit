@@ -20,7 +20,8 @@ import {
   MessageCircle,
   ExternalLink,
   Sparkles,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
 import { Photo, SupportedLanguage } from '../types';
 
@@ -31,6 +32,7 @@ interface LightboxModalProps {
   onNext: () => void;
   onToggleFavorite: (photoId: string) => void;
   onDownload: (photo: Photo, resolution: 'original' | 'web' | 'mobile') => void;
+  onDeletePhoto?: (photoId: string) => void;
   currentLang: SupportedLanguage;
   allPhotosCount: number;
   currentIndex: number;
@@ -43,6 +45,7 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
   onNext,
   onToggleFavorite,
   onDownload,
+  onDeletePhoto,
   allPhotosCount,
   currentIndex
 }) => {
@@ -377,6 +380,18 @@ export const LightboxModal: React.FC<LightboxModalProps> = ({
           >
             <Heart className={`w-4 h-4 ${photo.isFavorited ? 'fill-current' : ''}`} />
           </button>
+
+          {/* Delete Photo */}
+          {onDeletePhoto && (
+            <button
+              id="lightbox-delete-btn"
+              onClick={() => onDeletePhoto(photo.id)}
+              className="p-2 rounded-full border bg-white/10 border-white/15 text-white hover:bg-rose-600 hover:border-rose-500 transition-colors active:scale-90"
+              title="Delete this photo"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
 
           {/* Toggle Metadata Panel */}
           <button

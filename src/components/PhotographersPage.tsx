@@ -29,10 +29,10 @@ export const PhotographersPage: React.FC<PhotographersPageProps> = ({
       <div className="max-w-3xl mb-12">
         <div className="flex items-center gap-2 mb-3">
           <span className="font-coolvetica text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-            Pinisara Photographers Club
+            Pinisara Photography
           </span>
           <span className="font-tempting italic text-stone-500 dark:text-stone-400 text-sm">
-            Visual Storytellers & Media Guild
+            Pinnawala Central College · Visual Storytellers
           </span>
         </div>
 
@@ -41,7 +41,7 @@ export const PhotographersPage: React.FC<PhotographersPageProps> = ({
         </h1>
 
         <p className="mt-3 text-stone-600 dark:text-stone-400 text-sm sm:text-base leading-relaxed">
-          Four dedicated student photojournalists capturing the energy, decisive plays, and historic milestones of athletics and school life in 4K resolution.
+          Four dedicated student photojournalists of Pinisara Photography at Pinnawala Central College capturing the energy, decisive plays, and historic milestones of athletics and school life in 4K resolution.
         </p>
       </div>
 

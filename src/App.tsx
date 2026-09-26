@@ -12,7 +12,8 @@ import {
   CategoryInfo, 
   SupportedLanguage,
   UserProfile,
-  CollaborativeSet
+  CollaborativeSet,
+  EventItem
 } from './types';
 import { Navbar, AppPage } from './components/Navbar';
 import { FilterBar } from './components/FilterBar';
@@ -24,9 +25,26 @@ import { FavoritesPage } from './components/FavoritesPage';
 import { UploadPage } from './components/UploadPage';
 import { AccountModal } from './components/AccountModal';
 import { CollaborationsPage } from './components/CollaborationsPage';
-import { Camera, Smartphone, ArrowRight, ArrowUp, ShieldCheck, Sparkles, Coins } from 'lucide-react';
+import { ActivityFeed } from './components/ActivityFeed';
+import { BootLoader } from './components/BootLoader';
+import { SeamlessPortalSection } from './components/SeamlessPortalSection';
+import { CreativeOutputSection } from './components/CreativeOutputSection';
+import { FeaturedStoriesSection } from './components/FeaturedStoriesSection';
+import { SpineCarouselSection } from './components/SpineCarouselSection';
+import { FloatingBottomDock } from './components/FloatingBottomDock';
+import { SmoothScrollController, CursorParallaxImage } from './components/ParallaxAndScroll';
+import {
+  ScopePage,
+  BehindTheScenesPage,
+  ExhibitionsPage,
+  ChroniclePage,
+  LetsTalkPage
+} from './components/ExtraProfessionalPages';
+import { Camera, Smartphone, ArrowRight, ArrowUp, ShieldCheck, Sparkles, Coins, Layers, Activity as ActivityIcon, Trash2, RotateCcw } from 'lucide-react';
 
 export default function App() {
+  // Boot-Up Animation State (Video 3: 0% -> 63% -> 100% with hairline progress bar)
+  const [isBooting, setIsBooting] = useState<boolean>(true);
   // Theme State: Dark Mode with System Preference & LocalStorage Fallback
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -52,6 +70,9 @@ export default function App() {
   // Page Navigation State
   const [activePage, setActivePage] = useState<AppPage>('gallery');
 
+  // Interactive First-Page Hero Fan-Out State (matches 00:00 -> 00:04 reference video choreography)
+  const [isHeroShowcaseActive, setIsHeroShowcaseActive] = useState<boolean>(false);
+
   // User & Creator Account State (with credits balance)
   const [currentUser, setCurrentUser] = useState<UserProfile>(CURRENT_USER);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
@@ -68,8 +89,9 @@ export default function App() {
   const [onlyFavorites, setOnlyFavorites] = useState<boolean>(false);
   const [onlyCollaborations, setOnlyCollaborations] = useState<boolean>(false);
 
-  // Photos & Data
+  // Photos, Events & Categories Data
   const [photos, setPhotos] = useState<Photo[]>(INITIAL_PHOTOS);
+  const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
   const [categories, setCategories] = useState<CategoryInfo[]>(INITIAL_CATEGORIES);
   const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
 
@@ -79,6 +101,97 @@ export default function App() {
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Update the cover thumbnail of an event
+  const handleUpdateEventThumbnail = (eventId: string, newCoverUrl: string) => {
+    setEvents(prev =>
+      prev.map(evt => (evt.id === eventId ? { ...evt, coverPhotoUrl: newCoverUrl } : evt))
+    );
+    showToast('Event cover thumbnail updated.');
+  };
+
+  // Add many images to one event (and optionally set a new cover thumbnail)
+  const handleAddMultiplePhotosToEvent = (
+    eventId: string,
+    newPhotos: Photo[],
+    newCoverUrl?: string
+  ) => {
+    if (newPhotos.length === 0) return;
+
+    setPhotos(prev => [...newPhotos, ...prev]);
+
+    setEvents(prev =>
+      prev.map(evt => {
+        if (evt.id === eventId) {
+          return {
+            ...evt,
+            photoCount: evt.photoCount + newPhotos.length,
+            coverPhotoUrl: newCoverUrl || evt.coverPhotoUrl
+          };
+        }
+        return evt;
+      })
+    );
+
+    const targetCat = newPhotos[0]?.category;
+    setCategories(prev =>
+      prev.map(cat => {
+        if (cat.id === targetCat || cat.id === 'all') {
+          return { ...cat, photoCount: cat.photoCount + newPhotos.length };
+        }
+        return cat;
+      })
+    );
+
+    // Reward creator credits
+    const creditBonus = newPhotos.length * 25;
+    setCurrentUser(prev => ({
+      ...prev,
+      credits: (prev.credits ?? 0) + creditBonus,
+      uploadedCount: (prev.uploadedCount ?? 0) + newPhotos.length
+    }));
+
+    showToast(
+      `Added ${newPhotos.length} ${newPhotos.length === 1 ? 'photo' : 'photos'} to event album! (+${creditBonus} Credits)`
+    );
+  };
+
+  // Create a brand new school event album with multiple initial photos
+  const handleCreateNewEvent = (newEvent: EventItem, initialPhotos: Photo[]) => {
+    setEvents(prev => [newEvent, ...prev]);
+    if (initialPhotos.length > 0) {
+      setPhotos(prev => [...initialPhotos, ...prev]);
+    }
+    showToast(`Created event "${newEvent.title}" with ${initialPhotos.length} photos!`);
+  };
+
+  // Delete a single photo (including any default example image)
+  const handleDeletePhoto = (photoId: string) => {
+    const target = photos.find(p => p.id === photoId);
+    setPhotos(prev => prev.filter(p => p.id !== photoId));
+    if (selectedPhotoId === photoId) {
+      setSelectedPhotoId(null);
+    }
+    showToast(target ? `Deleted "${target.title}" from the gallery.` : 'Deleted photo from the gallery.');
+  };
+
+  // Delete all default example images at once
+  const handleDeleteAllExamplePhotos = () => {
+    const exampleIds = new Set(INITIAL_PHOTOS.map(p => p.id));
+    setPhotos(prev => prev.filter(p => !exampleIds.has(p.id)));
+    setSelectedPhotoId(null);
+    showToast('All example images deleted! You can now upload your own photos.');
+  };
+
+  // Restore example images if desired
+  const handleRestoreExamplePhotos = () => {
+    setPhotos(prev => {
+      const existingIds = new Set(prev.map(p => p.id));
+      const missingExamples = INITIAL_PHOTOS.filter(p => !existingIds.has(p.id));
+      return [...prev, ...missingExamples];
+    });
+    showToast('Restored example images.');
   };
 
   // Filtered Photos for Gallery View
@@ -244,28 +357,25 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen bg-stone-50 dark:bg-[#080808] text-stone-900 dark:text-stone-100 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-stone-900 flex flex-col font-sans transition-colors duration-300">
-      
-      {/* Ambient Apple Glass Liquid Lighting Backdrops (Makes blur vivid in light & dark mode) */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-40 left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-emerald-400/25 via-teal-300/20 to-transparent dark:from-emerald-500/15 dark:to-transparent rounded-full blur-[130px] animate-orb-drift" />
-        <div className="absolute top-[28%] -right-28 w-[540px] h-[540px] bg-gradient-to-bl from-sky-400/22 via-cyan-300/16 to-transparent dark:from-sky-500/12 dark:to-transparent rounded-full blur-[140px] animate-orb-drift-reverse" />
-        <div className="absolute top-[60%] left-[-80px] w-[500px] h-[500px] bg-gradient-to-tr from-amber-300/20 via-emerald-300/16 to-transparent dark:from-emerald-800/15 dark:to-transparent rounded-full blur-[130px] animate-orb-drift" />
-        <div className="absolute -bottom-32 right-[15%] w-[550px] h-[550px] bg-gradient-to-tl from-indigo-300/18 via-teal-300/16 to-transparent dark:from-teal-900/20 dark:to-transparent rounded-full blur-[140px] animate-orb-drift-reverse" />
-      </div>
+    <div className="relative min-h-screen bg-stone-50 dark:bg-black text-stone-900 dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black flex flex-col font-sans transition-colors duration-700">
+      {/* Smooth Inertial Scroll Controller (Decelerates smoothly when stopping wheel/touch scroll) */}
+      <SmoothScrollController />
 
       {/* Non-intrusive Toast */}
       {toastMessage && (
         <div 
           id="system-toast"
-          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-stone-950/90 dark:bg-white/95 text-white dark:text-stone-900 text-xs shadow-2xl border border-white/10 dark:border-stone-200 flex items-center gap-2.5 backdrop-blur-xl animate-apple-slide-up"
+          className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl bg-stone-950/90 dark:bg-white/95 text-white dark:text-black text-xs shadow-2xl border border-white/10 dark:border-white/30 flex items-center gap-2.5 backdrop-blur-2xl animate-apple-slide-up"
         >
-          <div className="w-2 h-2 rounded-full bg-emerald-400 dark:bg-emerald-600"></div>
+          <div className="w-2 h-2 rounded-full bg-emerald-400 dark:bg-black"></div>
           <span className="font-medium">{toastMessage}</span>
         </div>
       )}
 
-      {/* Global Navigation Header with Dark Mode & Credits Indicator */}
+      {/* Boot-Up Animation (Video 3: 0% -> 63% -> 100% with 1px hairline progress bar) */}
+      {isBooting && <BootLoader onComplete={() => setIsBooting(false)} />}
+
+      {/* Global Navigation Header with Liquid Glass, Pure Dark Mode & Credits Indicator */}
       <Navbar
         activePage={activePage}
         onNavigate={(page) => {
@@ -288,136 +398,403 @@ export default function App() {
         onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
       />
 
+      {/* GPU-Accelerated Smooth Scroll Container with Exponential Friction Drift */}
+      <div
+        id="smooth-scroll-container"
+        style={{ willChange: 'transform' }}
+        className="w-full flex-1 flex flex-col overflow-x-clip overflow-y-visible"
+      >
+
       {/* MULTI-PAGE VIEW ROUTING */}
       {activePage === 'gallery' && (
         <>
-          {/* Apple-grade Minimalist Editorial Hero with Ambient Glass & Zero Clutter */}
-          <section id="gallery-hero-banner" className="pt-8 sm:pt-12 pb-4 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full animate-apple-fade-in">
-            <div className="flex flex-col gap-6 pb-6 border-b border-stone-200/80 dark:border-white/10">
+          {/* FULL-VIEWPORT FIRST PAGE — Unclipped Layout, Slow Blur & Interactive Cursor Parallax */}
+          <section 
+            id="gallery-hero-banner" 
+            className="relative min-h-[calc(100vh-5rem)] w-full overflow-visible flex flex-col justify-between px-4 sm:px-8 lg:px-12 py-6 sm:py-10 transition-colors duration-1000"
+          >
+            {/* Dimmed Frosted Blur Backdrop Layer that smoothly activates during Hero Showcase Expansion */}
+            <div 
+              className={`absolute inset-0 z-20 pointer-events-none transition-all duration-1400 cubic-bezier(0.16, 1, 0.3, 1) ${
+                isHeroShowcaseActive 
+                  ? 'bg-stone-950/75 dark:bg-black/85 backdrop-blur-md opacity-100' 
+                  : 'opacity-0 backdrop-blur-none'
+              }`}
+            />
+
+            {/* Main First-Page Split Grid (Left Column: Stacked Display + Bottom Bio | Right Column: Interactive Hero Stage) */}
+            <div className="relative max-w-7xl mx-auto w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
               
-              <div className="max-w-3xl space-y-3">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <span className="font-coolvetica text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                    Pinisara Photographers
-                  </span>
-                  <span className="font-tempting italic text-stone-500 dark:text-stone-400 text-sm">
-                    Fine Student Sports Journalism & Milestone Archive
-                  </span>
+              {/* LEFT COLUMN: Stacked 4-Line Headline (Top) + About Pinisara Photography / Pinnawala Central College (Bottom) */}
+              <div 
+                className={`lg:col-span-5 flex flex-col justify-between py-2 sm:py-4 z-10 transition-all duration-1400 cubic-bezier(0.16, 1, 0.3, 1) ${
+                  isHeroShowcaseActive ? 'opacity-30 blur-[2px] scale-[0.98]' : 'opacity-100 blur-0 scale-100'
+                }`}
+              >
+                {/* Top-Left Stacked Display Typography */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="font-coolvetica text-xs uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-50 dark:bg-white/10 text-emerald-800 dark:text-white border border-emerald-200 dark:border-white/20 backdrop-blur-xl">
+                      Pinisara Photography
+                    </span>
+                    <span className="font-mono text-[11px] uppercase tracking-widest text-stone-500 dark:text-white/70">
+                      Pinnawala Central College
+                    </span>
+                  </div>
+
+                  {/* 4-Line Stacked Display Headline matching reference font design & placement */}
+                  <h1 className="font-coolvetica font-bold uppercase text-5xl sm:text-6xl lg:text-[4.35rem] xl:text-[4.9rem] text-stone-900 dark:text-white tracking-[-0.03em] leading-[0.93] select-none">
+                    <span className="block">CAPTURING</span>
+                    <span className="block">MOMENTS</span>
+                    <span className="block">
+                      THAT{' '}
+                      <span className="font-tempting italic font-normal capitalize tracking-normal text-[0.94em] text-emerald-700 dark:text-white">
+                        More
+                      </span>
+                    </span>
+                    <span className="block">MOVE YOU.</span>
+                  </h1>
+
+                  <p className="font-source-serif text-base sm:text-lg text-stone-700 dark:text-white/85 tracking-tight pt-1">
+                    School Photo Archive ·{' '}
+                    <span className="font-tempting italic text-stone-500 dark:text-white/65">
+                      Shot on Our Cameras & Phones
+                    </span>
+                  </p>
                 </div>
 
-                <h1 className="font-source-serif font-normal text-3xl sm:text-5xl lg:text-6xl text-stone-900 dark:text-white tracking-tight leading-[1.12]">
-                  High-Resolution Public Archive
-                </h1>
+                {/* Bottom-Left Bio / Society Identity Block */}
+                <div className="pt-8 lg:pt-12 max-w-md space-y-2.5">
+                  <span className="text-[11px] font-mono uppercase tracking-widest text-stone-400 dark:text-white/60 block">
+                    About Us · Pinnawala Central College
+                  </span>
+                  <p className="text-stone-700 dark:text-white/80 text-xs sm:text-sm leading-relaxed font-medium">
+                    We are <strong className="font-semibold text-stone-900 dark:text-white">Pinisara Photography</strong>, the student photography club of{' '}
+                    <strong className="font-semibold text-stone-900 dark:text-white">Pinnawala Central College</strong>. No Hollywood movie rigs—just four friends with two Canon DSLRs and two phones capturing assemblies, Pirith ceremonies, elections, and sports for everyone to download for free.
+                  </p>
 
-                <p className="text-stone-600 dark:text-stone-400 text-xs sm:text-sm max-w-2xl leading-relaxed">
-                  Decisive championship plays, athletic tournaments, and school ceremonies captured in uncompressed 4K resolution. Free 1-click downloads for students, athletes, and families.
-                </p>
+                  <div className="pt-2 flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={() => setIsHeroShowcaseActive(prev => !prev)}
+                      className="px-4 py-2 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs font-semibold tracking-wide hover:opacity-85 transition-all duration-700 shadow-xs"
+                    >
+                      {isHeroShowcaseActive ? 'Reset Stage View' : 'Preview Recent Work Stage'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActivePage('albums');
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className="px-4 py-2 rounded-full glass-pill text-stone-700 dark:text-white text-xs font-medium transition-all duration-700"
+                    >
+                      Manage Event Albums
+                    </button>
+                    <a
+                      href="#archive-controls-anchor"
+                      className="px-4 py-2 rounded-full glass-pill text-stone-700 dark:text-white text-xs font-medium transition-all duration-700"
+                    >
+                      Explore Archive ↓
+                    </a>
+                    {photos.length > 0 && (
+                      <button
+                        onClick={handleDeleteAllExamplePhotos}
+                        className="px-4 py-2 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-medium flex items-center gap-1.5 transition-all duration-500 shadow-xs"
+                        title="Delete all default example images"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Example Images</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Creators Filter Bar - Wrapped in Ultra Glass */}
-              <div className="p-4 sm:p-5 rounded-3xl ultra-glass space-y-3 shadow-md">
-                <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
-                  <span className="font-mono text-[11px] uppercase tracking-wider font-semibold">
-                    Filter by Photographer & Camera Body
-                  </span>
-                  {selectedPhotographer !== 'all' && (
-                    <button
-                      onClick={() => setSelectedPhotographer('all')}
-                      className="text-emerald-700 dark:text-emerald-400 hover:text-emerald-900 dark:hover:text-emerald-300 underline text-[11px] font-medium"
+              {/* RIGHT COLUMN: Full-Height Hero Portrait with Cursor Parallax & Slow Blur Satellite Fan-Out Stage */}
+              <div 
+                className="lg:col-span-7 relative flex items-center justify-end min-h-[440px] sm:min-h-[540px] lg:min-h-[calc(100vh-8.5rem)] z-30"
+                onMouseEnter={() => setIsHeroShowcaseActive(true)}
+                onMouseLeave={() => setIsHeroShowcaseActive(false)}
+              >
+                {/* Central Hero Photograph Container — Shifts smoothly to center on hover/click + Cursor Parallax */}
+                <div 
+                  onClick={() => setIsHeroShowcaseActive(prev => !prev)}
+                  className={`relative w-full lg:w-[92%] h-[440px] sm:h-[540px] lg:h-[calc(100vh-8.5rem)] overflow-hidden cursor-pointer transition-all duration-1500 cubic-bezier(0.16, 1, 0.3, 1) ${
+                    isHeroShowcaseActive 
+                      ? 'lg:-translate-x-[24%] scale-[0.94] rounded-none shadow-[0_35px_90px_-15px_rgba(0,0,0,0.85)]' 
+                      : 'translate-x-0 scale-100 rounded-none shadow-2xl'
+                  }`}
+                >
+                  <CursorParallaxImage
+                    src={photos[0]?.originalUrl || 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=2560&q=95'}
+                    alt={photos[0]?.title || 'Pinisara Photography — Pinnawala Central College'}
+                    intensity={28}
+                    tiltIntensity={5}
+                    containerClassName="w-full h-full"
+                  >
+                    {/* Subtle bottom gradient for RECENT WORK typography */}
+                    <div 
+                      className={`absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent transition-opacity duration-1200 pointer-events-none ${
+                        isHeroShowcaseActive ? 'opacity-100' : 'opacity-40'
+                      }`}
+                    />
+
+                    {/* "RECENT WORK" Editorial Overlay Title at Bottom-Left */}
+                    <div 
+                      className={`absolute bottom-5 left-6 sm:bottom-7 sm:left-8 z-20 transition-all duration-1200 cubic-bezier(0.16, 1, 0.3, 1) pointer-events-none ${
+                        isHeroShowcaseActive 
+                          ? 'opacity-100 blur-0 translate-y-0' 
+                          : 'opacity-0 blur-sm translate-y-4'
+                      }`}
                     >
-                      Show All Photographers
-                    </button>
-                  )}
+                      <span className="font-sans font-light uppercase tracking-[0.06em] text-2xl sm:text-4xl lg:text-[2.75rem] text-white/95 drop-shadow-md">
+                        RECENT WORK
+                      </span>
+                    </div>
+
+                    {/* Interactive Hint Badge when idle */}
+                    <div 
+                      className={`absolute bottom-4 right-4 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-xl text-white font-mono text-[10px] uppercase tracking-wider border border-white/20 transition-all duration-1000 pointer-events-none ${
+                        isHeroShowcaseActive ? 'opacity-0 blur-xs' : 'opacity-100 blur-0'
+                      }`}
+                    >
+                      Move Cursor for Parallax · Hover to Expand
+                    </div>
+                  </CursorParallaxImage>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
-                  <button
-                    id="filter-creator-all"
-                    onClick={() => setSelectedPhotographer('all')}
-                    className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap shrink-0 border transition-all duration-200 active:scale-95 ${
-                      selectedPhotographer === 'all'
-                        ? 'bg-black text-white dark:bg-white dark:text-stone-950 border-black dark:border-white shadow-xs font-semibold'
-                        : 'glass-pill text-stone-700 dark:text-stone-300 hover:bg-white/90 dark:hover:bg-stone-800 font-medium'
+                {/* FLOATING SATELLITE CARD 1 (Top-Left of Central Hero — Slow Blur Reveal) */}
+                {photos[1] && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoId(photos[1].id);
+                    }}
+                    className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 cubic-bezier(0.16, 1, 0.3, 1) ${
+                      isHeroShowcaseActive
+                        ? 'opacity-100 blur-0 top-[6%] left-[-12%] lg:left-[-22%] scale-100 translate-y-0'
+                        : 'opacity-0 blur-md top-[25%] left-[15%] scale-75 translate-y-6 pointer-events-none'
                     }`}
                   >
-                    <span>All Photographers</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
-                      selectedPhotographer === 'all' 
-                        ? 'bg-white/20 dark:bg-black/20 text-white dark:text-stone-950' 
-                        : 'bg-stone-200/60 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
-                    }`}>
-                      {photos.length}
-                    </span>
-                  </button>
-
-                  {CREATOR_TEAM.map((creator) => {
-                    const isSelected = selectedPhotographer === creator.id;
-
-                    return (
-                      <button
-                        key={creator.id}
-                        id={`filter-creator-${creator.id}`}
-                        onClick={() => setSelectedPhotographer(isSelected ? 'all' : creator.id)}
-                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap shrink-0 border transition-all duration-200 active:scale-95 ${
-                          isSelected
-                            ? 'bg-black text-white dark:bg-white dark:text-stone-950 border-black dark:border-white shadow-xs font-semibold'
-                            : 'glass-pill text-stone-700 dark:text-stone-300 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/80 font-medium'
-                        }`}
-                      >
-                        {/* Minimalist Monogram - NO FACES */}
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center font-coolvetica text-[9px] font-bold ${
-                          isSelected 
-                            ? 'bg-emerald-500 text-white' 
-                            : 'bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300'
-                        }`}>
-                          {getInitials(creator.name)}
-                        </div>
-
-                        <span>{creator.name}</span>
-
-                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
-                          isSelected 
-                            ? 'bg-emerald-800 dark:bg-emerald-200 text-emerald-200 dark:text-emerald-900 font-bold' 
-                            : 'bg-emerald-50 dark:bg-stone-800 text-emerald-800 dark:text-emerald-300 font-semibold'
-                        }`}>
-                          {creator.camera}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Active Photographer Detail Pill */}
-                {selectedPhotographer !== 'all' && (() => {
-                  const activeCreator = CREATOR_TEAM.find(c => c.id === selectedPhotographer);
-                  if (!activeCreator) return null;
-                  return (
-                    <div className="mt-2 p-3.5 rounded-2xl ultra-glass flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-stone-700 dark:text-stone-300 animate-apple-fade-in shadow-xs">
-                      <div className="flex items-center gap-2.5">
-                        <Camera className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                        <div>
-                          <span className="font-semibold text-stone-900 dark:text-white">
-                            {activeCreator.name}
-                          </span>
-                          <span className="mx-1.5 text-stone-400 dark:text-stone-600">·</span>
-                          <span className="font-mono text-emerald-800 dark:text-emerald-300 font-semibold text-[11px]">
-                            {activeCreator.camera}
-                          </span>
-                          <span className="mx-1.5 text-stone-400 dark:text-stone-600">·</span>
-                          <span className="text-stone-500 dark:text-stone-400 text-[11px]">
-                            {activeCreator.role}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">
-                        {filteredPhotos.length} {filteredPhotos.length === 1 ? 'photo' : 'photos'} shown
-                      </div>
+                    <div className="inline-block mb-1 px-2 py-0.5 bg-white/95 dark:bg-black/90 backdrop-blur-xl text-stone-900 dark:text-white font-mono text-[9px] tracking-wider border border-white/20 shadow-xs">
+                      f/ {photos[1].settings || '1/800s · f/4.0 · ISO 400'}
                     </div>
-                  );
-                })()}
+                    <div className="w-44 lg:w-56 aspect-4/3 border-2 border-white/95 shadow-2xl overflow-hidden bg-black group/sat">
+                      <img
+                        src={photos[1].thumbnailUrl}
+                        alt={photos[1].title}
+                        className="w-full h-full object-cover group-hover/sat:scale-105 transition-transform duration-1000"
+                      />
+                    </div>
+                  </div>
+                )}
 
+                {/* FLOATING SATELLITE CARD 2 (Bottom-Left over Headline — Slow Blur Reveal) */}
+                {photos[2] && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoId(photos[2].id);
+                    }}
+                    className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 delay-100 cubic-bezier(0.16, 1, 0.3, 1) ${
+                      isHeroShowcaseActive
+                        ? 'opacity-100 blur-0 bottom-[16%] left-[-28%] lg:left-[-56%] scale-100 translate-x-0'
+                        : 'opacity-0 blur-md bottom-[25%] left-[10%] scale-75 translate-x-12 pointer-events-none'
+                    }`}
+                  >
+                    <div className="inline-block mb-1 px-2 py-0.5 bg-white/95 dark:bg-black/90 backdrop-blur-xl text-stone-900 dark:text-white font-mono text-[9px] tracking-wider border border-white/20 shadow-xs">
+                      f/ {photos[2].settings || '1/250s · f/1.8 · ISO 800'}
+                    </div>
+                    <div className="w-52 lg:w-68 aspect-4/3 border-2 border-white/95 shadow-2xl overflow-hidden bg-black group/sat">
+                      <img
+                        src={photos[2].thumbnailUrl}
+                        alt={photos[2].title}
+                        className="w-full h-full object-cover group-hover/sat:scale-105 transition-transform duration-1000"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* FLOATING SATELLITE CARD 3 (Bottom-Right overlapping Central Hero — Slow Blur Reveal) */}
+                {photos[4] && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoId(photos[4].id);
+                    }}
+                    className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 delay-150 cubic-bezier(0.16, 1, 0.3, 1) ${
+                      isHeroShowcaseActive
+                        ? 'opacity-100 blur-0 bottom-[8%] right-[12%] lg:right-[20%] scale-100 translate-y-0'
+                        : 'opacity-0 blur-md bottom-[20%] right-[30%] scale-75 translate-y-8 pointer-events-none'
+                    }`}
+                  >
+                    <div className="inline-block mb-1 px-2 py-0.5 bg-white/95 dark:bg-black/90 backdrop-blur-xl text-stone-900 dark:text-white font-mono text-[9px] tracking-wider border border-white/20 shadow-xs">
+                      f/ {photos[4].settings || '1/640s · f/1.6 · ISO 64'}
+                    </div>
+                    <div className="w-48 lg:w-60 aspect-4/3 border-2 border-white/95 shadow-2xl overflow-hidden bg-black group/sat">
+                      <img
+                        src={photos[4].thumbnailUrl}
+                        alt={photos[4].title}
+                        className="w-full h-full object-cover group-hover/sat:scale-105 transition-transform duration-1000"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* FLOATING SATELLITE CARD 4 (Top-Right outside Central Hero — Slow Blur Reveal) */}
+                {photos[6] && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoId(photos[6].id);
+                    }}
+                    className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 delay-200 cubic-bezier(0.16, 1, 0.3, 1) ${
+                      isHeroShowcaseActive
+                        ? 'opacity-100 blur-0 top-[22%] right-[-2%] lg:right-[-4%] scale-100 translate-x-0'
+                        : 'opacity-0 blur-md top-[30%] right-[20%] scale-75 -translate-x-8 pointer-events-none'
+                    }`}
+                  >
+                    <div className="inline-block mb-1 px-2 py-0.5 bg-white/95 dark:bg-black/90 backdrop-blur-xl text-stone-900 dark:text-white font-mono text-[9px] tracking-wider border border-white/20 shadow-xs">
+                      f/ {photos[6].settings || '1/400s · f/2.4 · ISO 100'}
+                    </div>
+                    <div className="w-44 lg:w-56 aspect-4/3 border-2 border-white/95 shadow-2xl overflow-hidden bg-black group/sat">
+                      <img
+                        src={photos[6].thumbnailUrl}
+                        alt={photos[6].title}
+                        className="w-full h-full object-cover group-hover/sat:scale-105 transition-transform duration-1000"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
+            </div>
+          </section>
+
+          {/* SEAMLESS ANIMATION BETWEEN PAGE 1 & PAGE 2 (Unclipped Viewfinder Showcase + Student Gear Breakdown) */}
+          <SeamlessPortalSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          />
+
+          {/* PAGE 2 SCROLLING DESIGN: "Our Creative Output" Asymmetric Showcase */}
+          <CreativeOutputSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+            onDeletePhoto={handleDeletePhoto}
+          />
+
+          {/* PAGE 3 SCROLLING DESIGN: "Featured Stories" (01)-(04) Split Screen + Center X/Y Coordinate Loupe */}
+          <FeaturedStoriesSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          />
+
+          {/* PAGE 4 PHOTO CAROUSEL: "CHAPTER 4 · UPCOMING RELEASES" Spine-to-Cover Monograph Carousel */}
+          <SpineCarouselSection
+            photos={photos}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          />
+
+          {/* Creators Filter Bar Section Below Curated Chapters */}
+          <section id="archive-controls-anchor" className="pt-12 pb-2 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+            <div className="p-4 sm:p-5 rounded-3xl ultra-glass space-y-3 shadow-md">
+              <div className="flex items-center justify-between text-xs text-stone-500 dark:text-white/70">
+                <span className="font-mono text-[11px] uppercase tracking-wider font-semibold">
+                  Pinisara Photography Crew · Filter by Student Photographer & Camera/Phone
+                </span>
+                {selectedPhotographer !== 'all' && (
+                  <button
+                    onClick={() => setSelectedPhotographer('all')}
+                    className="text-stone-900 dark:text-white underline text-[11px] font-medium"
+                  >
+                    Show All Photographers
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+                <button
+                  id="filter-creator-all"
+                  onClick={() => setSelectedPhotographer('all')}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap shrink-0 border transition-all duration-500 active:scale-95 ${
+                    selectedPhotographer === 'all'
+                      ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs font-semibold'
+                      : 'glass-pill text-stone-700 dark:text-white/80 hover:bg-white/90 dark:hover:bg-white/15 font-medium'
+                  }`}
+                >
+                  <span>All Photographers</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono tabular-nums ${
+                    selectedPhotographer === 'all' 
+                      ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black' 
+                      : 'bg-stone-200/60 dark:bg-white/10 text-stone-600 dark:text-white/70'
+                  }`}>
+                    {photos.length}
+                  </span>
+                </button>
+
+                {CREATOR_TEAM.map((creator) => {
+                  const isSelected = selectedPhotographer === creator.id;
+
+                  return (
+                    <button
+                      key={creator.id}
+                      id={`filter-creator-${creator.id}`}
+                      onClick={() => setSelectedPhotographer(isSelected ? 'all' : creator.id)}
+                      className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap shrink-0 border transition-all duration-500 active:scale-95 ${
+                        isSelected
+                          ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs font-semibold'
+                          : 'glass-pill text-stone-700 dark:text-white/80 hover:bg-white/90 dark:hover:bg-white/15 font-medium'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full flex items-center justify-center font-coolvetica text-[9px] font-bold ${
+                        isSelected 
+                          ? 'bg-white/25 dark:bg-black/25 text-white dark:text-black' 
+                          : 'bg-stone-200 dark:bg-white/15 text-stone-700 dark:text-white'
+                      }`}>
+                        {getInitials(creator.name)}
+                      </div>
+
+                      <span>{creator.name}</span>
+
+                      <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                        isSelected 
+                          ? 'bg-white/20 dark:bg-black/20 text-white dark:text-black font-bold' 
+                          : 'bg-stone-100 dark:bg-white/10 text-stone-700 dark:text-white/80 font-semibold'
+                      }`}>
+                        {creator.camera}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedPhotographer !== 'all' && (() => {
+                const activeCreator = CREATOR_TEAM.find(c => c.id === selectedPhotographer);
+                if (!activeCreator) return null;
+                return (
+                  <div className="mt-2 p-3.5 rounded-2xl ultra-glass flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-stone-700 dark:text-white/85 animate-apple-fade-in shadow-xs">
+                    <div className="flex items-center gap-2.5">
+                      <Camera className="w-4 h-4 text-stone-900 dark:text-white shrink-0" />
+                      <div>
+                        <span className="font-semibold text-stone-900 dark:text-white">
+                          {activeCreator.name}
+                        </span>
+                        <span className="mx-1.5 text-stone-400 dark:text-white/40">·</span>
+                        <span className="font-mono text-stone-800 dark:text-white font-semibold text-[11px]">
+                          {activeCreator.camera}
+                        </span>
+                        <span className="mx-1.5 text-stone-400 dark:text-white/40">·</span>
+                        <span className="text-stone-500 dark:text-white/70 text-[11px]">
+                          {activeCreator.role}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-stone-500 dark:text-white/70 font-mono">
+                      {filteredPhotos.length} {filteredPhotos.length === 1 ? 'photo' : 'photos'} shown
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </section>
 
@@ -463,11 +840,141 @@ export default function App() {
               onToggleFavorite={handleToggleFavorite}
               onQuickDownload={handleDownload}
               onSharePhoto={(photo) => setSelectedPhotoId(photo.id)}
+              onDeletePhoto={handleDeletePhoto}
+              onDeleteAllExamplePhotos={handleDeleteAllExamplePhotos}
+              onRestoreExamplePhotos={handleRestoreExamplePhotos}
               viewMode={viewMode}
               currentLang={currentLang}
             />
           </main>
+
+          {/* Real-Time Activity Feed Section (New Photo Uploads & Upcoming Pinnawala Central College Events) */}
+          <ActivityFeed
+            photos={photos}
+            events={events}
+            onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+            onSelectCategory={(cat) => {
+              setSelectedCategory(cat);
+              const el = document.getElementById('gallery-filter-toolbar');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            onNavigateToCollaborations={() => {
+              setActivePage('collaborations');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            compact={true}
+          />
         </>
+      )}
+
+      {/* DEDICATED CREATIVE OUTPUT PAGE (Video 1) */}
+      {activePage === 'output' && (
+        <CreativeOutputSection
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          onDeletePhoto={handleDeletePhoto}
+          onExploreMore={() => {
+            setActivePage('stories');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {/* DEDICATED SCOPE & GEAR PAGE */}
+      {activePage === 'scope' && (
+        <ScopePage
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          onNavigate={(page) => {
+            setActivePage(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {/* DEDICATED FEATURED STORIES PAGE (Video 2) */}
+      {activePage === 'stories' && (
+        <FeaturedStoriesSection
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+        />
+      )}
+
+      {/* DEDICATED SPINE CAROUSEL PAGE (Video 4) */}
+      {activePage === 'carousel' && (
+        <SpineCarouselSection
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+        />
+      )}
+
+      {/* DEDICATED BEHIND THE LENS (BTS) PAGE */}
+      {activePage === 'bts' && (
+        <BehindTheScenesPage
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+        />
+      )}
+
+      {/* DEDICATED EXHIBITIONS & HALL OF FAME PAGE */}
+      {activePage === 'exhibitions' && (
+        <ExhibitionsPage
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+        />
+      )}
+
+      {/* DEDICATED COLLEGE TIMELINE / CHRONICLE PAGE */}
+      {activePage === 'chronicle' && (
+        <ChroniclePage
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+        />
+      )}
+
+      {/* DEDICATED OPTICAL VIEWFINDER & GEAR PAGE (Video 5) */}
+      {activePage === 'optical' && (
+        <SeamlessPortalSection
+          photos={photos}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          onTransitionToNextSection={() => {
+            setActivePage('output');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {/* DEDICATED COLLABORATIONS DASHBOARD PAGE */}
+      {activePage === 'collaborations' && (
+        <CollaborationsPage
+          collaborativeSets={INITIAL_COLLABORATIVE_SETS}
+          photos={photos}
+          creators={CREATOR_TEAM}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          onQuickDownload={handleDownload}
+          onNavigateToUpload={() => {
+            setActivePage('upload');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      )}
+
+      {/* DEDICATED REAL-TIME ACTIVITY FEED PAGE */}
+      {activePage === 'activity' && (
+        <ActivityFeed
+          photos={photos}
+          events={events}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          onSelectCategory={(cat) => {
+            setSelectedCategory(cat);
+            setActivePage('gallery');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onNavigateToCollaborations={() => {
+            setActivePage('collaborations');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
       )}
 
       {/* DEDICATED PHOTOGRAPHERS PAGE */}
@@ -485,16 +992,22 @@ export default function App() {
         />
       )}
 
-      {/* DEDICATED ALBUMS & EVENTS PAGE */}
+      {/* DEDICATED ALBUMS & EVENTS PAGE (With Change Event Thumbnail + Add Many Images to One Event) */}
       {activePage === 'albums' && (
         <AlbumsPage
-          events={INITIAL_EVENTS}
+          events={events}
+          photos={photos}
           onSelectEventCategory={(category) => {
             setSelectedCategory(category);
             setSelectedPhotographer('all');
             setActivePage('gallery');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
+          onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
+          onUpdateEventThumbnail={handleUpdateEventThumbnail}
+          onAddMultiplePhotosToEvent={handleAddMultiplePhotosToEvent}
+          onCreateNewEvent={handleCreateNewEvent}
+          onDeletePhoto={handleDeletePhoto}
         />
       )}
 
@@ -526,6 +1039,11 @@ export default function App() {
         />
       )}
 
+      {/* DEDICATED LET'S TALK / REQUEST COVERAGE PAGE */}
+      {activePage === 'contact' && <LetsTalkPage />}
+
+      </div>
+
       {/* Lightbox Modal (Accessible on all pages) */}
       {selectedPhoto && (
         <LightboxModal
@@ -535,6 +1053,7 @@ export default function App() {
           onNext={handleNextPhoto}
           onToggleFavorite={handleToggleFavorite}
           onDownload={handleDownload}
+          onDeletePhoto={handleDeletePhoto}
           currentLang={currentLang}
           allPhotosCount={filteredPhotos.length}
           currentIndex={selectedPhotoIndex >= 0 ? selectedPhotoIndex : 0}
@@ -564,24 +1083,34 @@ export default function App() {
         }}
       />
 
-      {/* Minimalist Editorial Footer with Dark Mode */}
-      <footer id="main-footer" className="border-t border-stone-200/80 dark:border-white/10 bg-white/70 dark:bg-stone-950/70 backdrop-blur-xl py-10 text-xs text-stone-600 dark:text-stone-400 mt-auto transition-colors duration-300">
+      {/* Liquid Glass Bottom Navigation Bar (6 Core Sections + Google 2FA Account Trigger) */}
+      <FloatingBottomDock
+        activePage={activePage}
+        onNavigate={(page) => setActivePage(page)}
+        onReplayBoot={() => setIsBooting(true)}
+        onOpenAccountModal={() => setIsAccountModalOpen(true)}
+        isCreator={currentUser?.isCreator}
+        mfaVerified={true}
+      />
+
+      {/* Minimalist Editorial Footer with Pure Dark Mode */}
+      <footer id="main-footer" className="border-t border-stone-200/80 dark:border-white/15 bg-white/70 dark:bg-black/80 backdrop-blur-2xl pt-10 pb-24 text-xs text-stone-600 dark:text-white/70 mt-auto transition-colors duration-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3 text-center md:text-left">
-            <div className="w-9 h-9 rounded-2xl bg-black dark:bg-stone-800 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <Camera className="w-4 h-4 text-emerald-400" />
+            <div className="w-9 h-9 rounded-2xl bg-black dark:bg-white/10 border border-transparent dark:border-white/20 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Camera className="w-4 h-4 text-white" />
             </div>
             <div>
               <p className="font-coolvetica font-bold text-sm text-stone-900 dark:text-white tracking-wide">
-                PINISARA PHOTOGRAPHERS
+                PINISARA PHOTOGRAPHY · PINNAWALA CENTRAL COLLEGE
               </p>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">
+              <p className="text-[11px] text-stone-500 dark:text-white/60">
                 Hasaranga Jayawardhana · Dulen Induwara · Sayul Angammana · Udula Matheesha
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-6 text-xs font-medium">
+          <div className="flex flex-wrap items-center justify-center gap-5 text-xs font-medium">
             <button 
               onClick={() => {
                 setActivePage('gallery');
@@ -589,16 +1118,34 @@ export default function App() {
               }}
               className="hover:text-stone-900 dark:hover:text-white transition-colors"
             >
-              Gallery
+              Home
             </button>
             <button 
               onClick={() => {
-                setActivePage('team');
+                setActivePage('output');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="hover:text-stone-900 dark:hover:text-white transition-colors"
             >
-              Photographers
+              Works
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('scope');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Scope & Gear
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('stories');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Stories
             </button>
             <button 
               onClick={() => {
@@ -607,23 +1154,68 @@ export default function App() {
               }}
               className="hover:text-stone-900 dark:hover:text-white transition-colors"
             >
-              Albums
+              Events & Albums
             </button>
             <button 
               onClick={() => {
-                setActivePage('favorites');
+                setActivePage('bts');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
               className="hover:text-stone-900 dark:hover:text-white transition-colors"
             >
-              Favorites ({favoritesCount})
+              Behind the Lens
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('exhibitions');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Hall of Fame
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('chronicle');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Timeline
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('collaborations');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Collab
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('team');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Team
+            </button>
+            <button 
+              onClick={() => {
+                setActivePage('contact');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="hover:text-stone-900 dark:hover:text-white transition-colors"
+            >
+              Let's Talk
             </button>
             <button 
               onClick={() => {
                 setActivePage('upload');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="text-emerald-700 dark:text-emerald-400 font-semibold hover:text-emerald-900 dark:hover:text-emerald-300 transition-colors"
+              className="text-stone-900 dark:text-white font-semibold hover:opacity-75 transition-opacity"
             >
               Publish (+50 cr)
             </button>
