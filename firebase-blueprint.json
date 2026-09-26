@@ -7,7 +7,7 @@
       "properties": {
         "userId": {
           "type": "string",
-          "description": "Firebase Auth UID of the user",
+          "description": "Firebase Auth UID or unique account ID of the user",
           "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
         "displayName": {
@@ -241,6 +241,147 @@
       },
       "required": ["id", "title", "originalUrl", "webUrl", "photographerName", "category", "createdAt"]
     },
+    "PhotoReactionSummary": {
+      "title": "PhotoReactionSummary",
+      "description": "Aggregated Tinder-style reaction counters (heart, clap, fire, star) per photo stored in Firestore",
+      "type": "object",
+      "properties": {
+        "photoId": {
+          "type": "string",
+          "description": "Target photo ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "heart": {
+          "type": "number",
+          "description": "Total Heart / Love reactions"
+        },
+        "clap": {
+          "type": "number",
+          "description": "Total Clap / Applause reactions"
+        },
+        "fire": {
+          "type": "number",
+          "description": "Total Fire / Lit reactions"
+        },
+        "star": {
+          "type": "number",
+          "description": "Total Super Star reactions"
+        },
+        "totalCount": {
+          "type": "number",
+          "description": "Sum of all reactions on this photo"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last reaction timestamp"
+        }
+      },
+      "required": ["photoId", "heart", "clap", "fire", "star", "totalCount", "updatedAt"]
+    },
+    "UserReaction": {
+      "title": "UserReaction",
+      "description": "Individual reaction event on a photo (like Tinder swipe/tap reaction)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique reaction event ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "photoId": {
+          "type": "string",
+          "description": "Target photo identifier",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reacting user ID",
+          "maxLength": 128
+        },
+        "userName": {
+          "type": "string",
+          "description": "Display name of reacting user",
+          "maxLength": 100
+        },
+        "type": {
+          "type": "string",
+          "description": "Reaction type",
+          "enum": ["heart", "clap", "fire", "star"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when reaction was triggered"
+        }
+      },
+      "required": ["id", "photoId", "userId", "userName", "type", "createdAt"]
+    },
+    "PhotoComment": {
+      "title": "PhotoComment",
+      "description": "Comment on a photo inside LightboxModal with its own reaction counters (heart, clap, fire)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique comment ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "photoId": {
+          "type": "string",
+          "description": "Target photo ID",
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorId": {
+          "type": "string",
+          "description": "User ID of comment author",
+          "maxLength": 128
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Display name of comment author",
+          "maxLength": 100
+        },
+        "authorRole": {
+          "type": "string",
+          "description": "Role or badge of comment author",
+          "maxLength": 80
+        },
+        "authorCamera": {
+          "type": "string",
+          "description": "Optional camera or phone used by creator",
+          "maxLength": 80
+        },
+        "text": {
+          "type": "string",
+          "description": "Comment body text",
+          "maxLength": 600
+        },
+        "reactionTag": {
+          "type": "string",
+          "description": "Optional attached reaction vibe (heart, clap, fire, star)",
+          "enum": ["heart", "clap", "fire", "star", "none"]
+        },
+        "heartCount": {
+          "type": "number",
+          "description": "Heart reactions on this comment"
+        },
+        "clapCount": {
+          "type": "number",
+          "description": "Clap reactions on this comment"
+        },
+        "fireCount": {
+          "type": "number",
+          "description": "Fire reactions on this comment"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Comment creation timestamp"
+        }
+      },
+      "required": ["id", "photoId", "authorId", "authorName", "text", "heartCount", "clapCount", "fireCount", "createdAt"]
+    },
     "Favorite": {
       "title": "Favorite",
       "description": "User bookmarked photo collection item",
@@ -319,6 +460,18 @@
     "/photos/{photoId}": {
       "schema": "Photo",
       "description": "High resolution photos with photographer credits and multi-resolution URLs"
+    },
+    "/photoReactions/{photoId}": {
+      "schema": "PhotoReactionSummary",
+      "description": "Aggregated Tinder-style reaction counts (heart, clap, fire, star) per photo"
+    },
+    "/photos/{photoId}/reactions/{reactionId}": {
+      "schema": "UserReaction",
+      "description": "Individual reaction events per photo"
+    },
+    "/photos/{photoId}/comments/{commentId}": {
+      "schema": "PhotoComment",
+      "description": "Photo comments and per-comment reaction counters in LightboxModal"
     },
     "/photos/{photoId}/favorites/{userId}": {
       "schema": "Favorite",

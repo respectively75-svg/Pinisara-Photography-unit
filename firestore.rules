@@ -2,12 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default deny catch-all
+    // Global Safety Net: Default deny catch-all
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper functions
+    // Reusable Hardened Global Helpers
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -24,17 +32,20 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     function isValidUser(data) {
-      return data.userId is string &&
-             data.displayName is string && data.displayName.size() <= 100 &&
-             data.role in ['student', 'parent', 'photographer', 'editor', 'admin'];
+      return data.keys().hasAll(['userId', 'displayName', 'role', 'createdAt']) &&
+             data.keys().hasOnly(['userId', 'displayName', 'email', 'avatarUrl', 'bio', 'role', 'affiliation', 'camera', 'lens', 'isCreator', 'credits', 'uploadedCount', 'mfaEnabled', 'mfaMethod', 'createdAt']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.role in ['student', 'parent', 'photographer', 'editor', 'admin'] &&
+             data.createdAt is string && data.createdAt.size() <= 64;
     }
 
     function isValidPhoto(data) {
-      return data.id is string &&
+      return data.id is string && data.id.size() <= 128 &&
              data.title is string && data.title.size() <= 200 &&
              data.originalUrl is string && data.originalUrl.size() <= 500 &&
              data.webUrl is string && data.webUrl.size() <= 500 &&
@@ -43,44 +54,113 @@ service cloud.firestore {
     }
 
     function isValidEvent(data) {
-      return data.id is string &&
+      return data.id is string && data.id.size() <= 128 &&
              data.title is string && data.title.size() <= 150 &&
              data.category is string && data.category.size() <= 50 &&
              data.coverPhotoUrl is string && data.coverPhotoUrl.size() <= 500;
     }
 
+    function isValidPhotoReactionSummary(data, photoId) {
+      return data.keys().hasAll(['photoId', 'heart', 'clap', 'fire', 'star', 'totalCount', 'updatedAt']) &&
+             data.keys().hasOnly(['photoId', 'heart', 'clap', 'fire', 'star', 'totalCount', 'updatedAt']) &&
+             data.photoId is string && data.photoId == photoId && data.photoId.size() <= 128 &&
+             data.heart is number && data.heart >= 0 &&
+             data.clap is number && data.clap >= 0 &&
+             data.fire is number && data.fire >= 0 &&
+             data.star is number && data.star >= 0 &&
+             data.totalCount is number && data.totalCount >= 0 &&
+             data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidUserReaction(data, photoId) {
+      return data.keys().hasAll(['id', 'photoId', 'userId', 'userName', 'type', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'photoId', 'userId', 'userName', 'type', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.photoId is string && data.photoId == photoId && data.photoId.size() <= 128 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 100 &&
+             data.type in ['heart', 'clap', 'fire', 'star'] &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidPhotoComment(data, photoId) {
+      return data.keys().hasAll(['id', 'photoId', 'authorId', 'authorName', 'text', 'heartCount', 'clapCount', 'fireCount', 'createdAt']) &&
+             data.keys().hasOnly(['id', 'photoId', 'authorId', 'authorName', 'authorRole', 'authorCamera', 'text', 'reactionTag', 'heartCount', 'clapCount', 'fireCount', 'createdAt']) &&
+             data.id is string && data.id.size() <= 128 &&
+             data.photoId is string && data.photoId == photoId && data.photoId.size() <= 128 &&
+             data.authorId is string && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 100 &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 600 &&
+             (!('authorRole' in data) || (data.authorRole is string && data.authorRole.size() <= 80)) &&
+             (!('authorCamera' in data) || (data.authorCamera is string && data.authorCamera.size() <= 80)) &&
+             (!('reactionTag' in data) || (data.reactionTag in ['heart', 'clap', 'fire', 'star', 'none'])) &&
+             data.heartCount is number && data.heartCount >= 0 &&
+             data.clapCount is number && data.clapCount >= 0 &&
+             data.fireCount is number && data.fireCount >= 0 &&
+             data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
     // User Public Profiles
     match /users/{userId} {
-      allow read: if true; // Public for photographer attribution
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.userId == request.auth.uid;
-      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) &&
-                       request.resource.data.userId == resource.data.userId;
+      allow get, list: if true;
+      allow create: if isValidId(userId) && isValidUser(incoming()) && incoming().userId == userId;
+      allow update: if isValidId(userId) && isValidUser(incoming()) && incoming().userId == existing().userId;
       allow delete: if isAdmin();
     }
 
     // User Private Settings & PII
     match /users/{userId}/private/{privateId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read, write: if (isOwner(userId) || isAdmin()) && isValidId(userId) && isValidId(privateId);
     }
 
     // Events (Public Galleries, Games, Ceremonies)
     match /events/{eventId} {
-      allow read: if true;
-      allow create: if (isAdmin() || isSignedIn()) && isValidEvent(request.resource.data) && isValidId(eventId);
-      allow update: if (isAdmin() || isSignedIn()) && isValidEvent(request.resource.data);
+      allow get, list: if true;
+      allow create: if (isAdmin() || isSignedIn()) && isValidId(eventId) && isValidEvent(incoming());
+      allow update: if (isAdmin() || isSignedIn()) && isValidId(eventId) && isValidEvent(incoming());
       allow delete: if isAdmin();
     }
 
-    // Photos Collection
-    match /photos/{photoId} {
-      allow read: if true; // Public high-res gallery browsing
-      allow create: if (isAdmin() || isSignedIn()) && isValidPhoto(request.resource.data) && isValidId(photoId);
-      allow update: if (isAdmin() || isSignedIn()) && isValidPhoto(request.resource.data);
+    // Aggregated Tinder-Style Reaction Counts per Photo
+    match /photoReactions/{photoId} {
+      allow get, list: if true;
+      allow create: if isValidId(photoId) && isValidPhotoReactionSummary(incoming(), photoId);
+      allow update: if isValidId(photoId) && isValidPhotoReactionSummary(incoming(), photoId) &&
+                       incoming().photoId == existing().photoId &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['heart', 'clap', 'fire', 'star', 'totalCount', 'updatedAt']);
       allow delete: if isAdmin();
+    }
+
+    // Photos Collection & Subcollections
+    match /photos/{photoId} {
+      allow get, list: if true;
+      allow create: if (isAdmin() || isSignedIn()) && isValidId(photoId) && isValidPhoto(incoming());
+      allow update: if (isAdmin() || isSignedIn()) && isValidId(photoId) && isValidPhoto(incoming());
+      allow delete: if isAdmin();
+
+      // Subcollection for Individual Reactions per Photo
+      match /reactions/{reactionId} {
+        allow get, list: if true;
+        allow create: if isValidId(photoId) && isValidId(reactionId) && isValidUserReaction(incoming(), photoId);
+        allow delete: if isAdmin();
+      }
+
+      // Subcollection for Photo Comments & Per-Comment Reactions in LightboxModal
+      match /comments/{commentId} {
+        allow get, list: if true;
+        allow create: if isValidId(photoId) && isValidId(commentId) && isValidPhotoComment(incoming(), photoId);
+        allow update: if isValidId(photoId) && isValidId(commentId) && isValidPhotoComment(incoming(), photoId) &&
+                         incoming().id == existing().id &&
+                         incoming().photoId == existing().photoId &&
+                         incoming().authorId == existing().authorId &&
+                         incoming().text == existing().text &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['heartCount', 'clapCount', 'fireCount']);
+        allow delete: if isAdmin();
+      }
 
       // Subcollection for Favorites
       match /favorites/{userId} {
-        allow read: if true;
+        allow get, list: if true;
         allow create: if isOwner(userId) && isValidId(userId);
         allow delete: if isOwner(userId) || isAdmin();
       }
@@ -88,7 +168,7 @@ service cloud.firestore {
 
     // Public Live Notifications & Game Alerts
     match /notifications/{notificationId} {
-      allow read: if true;
+      allow get, list: if true;
       allow create, update, delete: if isAdmin();
     }
   }

@@ -17,12 +17,15 @@ import {
   Layers,
   Activity,
   BookOpen,
-  Aperture,
   Columns,
   Compass,
   Award,
   Clock,
-  MessageSquare
+  MessageSquare,
+  Home,
+  Briefcase,
+  User,
+  Mail
 } from 'lucide-react';
 import { SupportedLanguage, UserProfile } from '../types';
 import { CURRENT_USER } from '../data/mockData';
@@ -74,8 +77,18 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showMorePagesMenu, setShowMorePagesMenu] = useState(false);
 
-  const navItems: { id: AppPage; label: string; icon: React.ReactNode }[] = [
+  const primaryCapsuleItems: { id: AppPage; label: string; icon: React.ReactNode }[] = [
+    { id: 'gallery', label: 'Home', icon: <Home className="w-4 h-4 stroke-[2]" /> },
+    { id: 'output', label: 'Works', icon: <Briefcase className="w-4 h-4 stroke-[1.9]" /> },
+    { id: 'albums', label: 'Events', icon: <Images className="w-4 h-4 stroke-[1.9]" /> },
+    { id: 'stories', label: 'Stories', icon: <BookOpen className="w-4 h-4 stroke-[1.9]" /> },
+    { id: 'team', label: 'Team', icon: <User className="w-4 h-4 stroke-[1.9]" /> },
+    { id: 'contact', label: 'Contact', icon: <Mail className="w-4 h-4 stroke-[1.9]" /> },
+  ];
+
+  const allNavItems: { id: AppPage; label: string; icon: React.ReactNode }[] = [
     { id: 'gallery', label: 'Home', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
     { id: 'output', label: 'Works', icon: <Sparkles className="w-3.5 h-3.5" /> },
     { id: 'scope', label: 'Scope', icon: <Compass className="w-3.5 h-3.5" /> },
@@ -91,6 +104,10 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'favorites', label: 'Favorites', icon: <Heart className="w-3.5 h-3.5" /> },
     { id: 'contact', label: "Let's Talk", icon: <MessageSquare className="w-3.5 h-3.5" /> },
   ];
+
+  const secondaryItems = allNavItems.filter(
+    (item) => !primaryCapsuleItems.some((p) => p.id === item.id)
+  );
 
   const languages: { code: SupportedLanguage; label: string }[] = [
     { code: 'en', label: 'English' },
@@ -114,175 +131,200 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header 
       id="main-header" 
-      className="sticky top-0 z-40 w-full liquid-glass border-b border-stone-200/80 dark:border-white/15 dark:text-white transition-colors duration-300"
+      className="sticky top-0 z-40 w-full px-3 sm:px-6 lg:px-8 pt-2.5 pb-2 transition-all duration-300"
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-20 gap-2 sm:gap-3">
+      <div className="max-w-7xl mx-auto">
+        {/* Clean Subtle Header with Single Center Capsule */}
+        <div className="relative overflow-hidden rounded-full refractive-glass-bar px-4 sm:px-6 py-2 flex items-center justify-between gap-3">
           
-          {/* Brand Logo - PINISARA PHOTOGRAPHY · PINNAWALA CENTRAL COLLEGE (Responsive & Never Overlapping) */}
-          <div className="flex items-center gap-3 sm:gap-6 min-w-0 flex-1 lg:flex-initial">
+          {/* Zone 1: Clean Brand Wordmark (No white box halo) */}
+          <div className="relative z-10 flex items-center gap-2.5 min-w-0 shrink-0">
             <button
               id="brand-home-btn"
               onClick={() => {
                 onNavigate('gallery');
                 onSearchChange('');
               }}
-              className="flex items-center gap-2.5 sm:gap-3 group text-left focus:outline-none min-w-0"
+              className="flex items-center gap-2.5 group text-left focus:outline-none min-w-0"
             >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-xs shrink-0">
+              <div className="w-8 h-8 rounded-full bg-stone-900 dark:bg-white/15 text-white flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-105">
                 <Camera className="w-4 h-4" />
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="font-sans font-bold text-sm sm:text-lg tracking-tight text-stone-900 dark:text-white truncate">
-                    Pinisara Photography<sup className="text-[9px] sm:text-[10px] font-semibold ml-0.5">®</sup>
-                  </span>
-                </div>
-                <p className="text-[9px] sm:text-[10px] text-stone-500 dark:text-white/65 font-mono tracking-wide truncate">
-                  Pinnawala Central College
-                </p>
-              </div>
+              <span className="font-sans font-bold text-sm sm:text-base tracking-tight text-stone-900 dark:text-white truncate hidden sm:block">
+                Pinisara Photography
+              </span>
             </button>
-
-            {/* Desktop Navigation Pages — Clean comma-separated editorial typography */}
-            <nav className="hidden xl:flex items-center gap-0.5 pl-4 border-l border-stone-200/80 dark:border-white/15 overflow-x-auto no-scrollbar max-w-[42vw]">
-              {navItems.map((item, idx) => {
-                const isActive = activePage === item.id;
-                const isLast = idx === navItems.length - 1;
-                return (
-                  <button
-                    key={item.id}
-                    id={`nav-link-${item.id}`}
-                    onClick={() => {
-                      onNavigate(item.id);
-                      if (searchQuery) onSearchChange('');
-                    }}
-                    className={`flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap shrink-0 transition-colors duration-200 ${
-                      isActive
-                        ? 'text-stone-900 dark:text-white font-semibold'
-                        : 'text-stone-400 dark:text-white/50 hover:text-stone-900 dark:hover:text-white font-medium'
-                    }`}
-                  >
-                    <span>{item.label}{!isLast ? ',' : ''}</span>
-                    {item.id === 'favorites' && favoritesCount > 0 && (
-                      <span className="text-[10px] font-mono text-stone-900 dark:text-white font-bold ml-0.5">
-                        ({favoritesCount})
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </nav>
           </div>
 
-          {/* Center Search Bar */}
-          <div className="hidden lg:flex flex-1 max-w-xs mx-3">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
+          {/* Zone 2: Primary Navigation Links (Single-layer, scaled-back subtle active droplet) */}
+          <nav
+            aria-label="Primary Navigation"
+            className="relative z-10 hidden md:flex items-center gap-1"
+          >
+            {primaryCapsuleItems.map((item) => {
+              const isActive = activePage === item.id;
+              return (
+                <button
+                  key={item.id}
+                  id={`nav-link-${item.id}`}
+                  onClick={() => {
+                    onNavigate(item.id);
+                    if (searchQuery) onSearchChange('');
+                  }}
+                  title={item.label}
+                  className={`relative flex items-center justify-center gap-2 px-3.5 lg:px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-200 active:scale-95 ${
+                    isActive
+                      ? 'refractive-glass-bubble text-stone-950 dark:text-white font-semibold'
+                      : 'text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-white'
+                  }`}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className="hidden lg:inline tracking-tight">{item.label}</span>
+                </button>
+              );
+            })}
+
+            {/* More Chapters Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMorePagesMenu((prev) => !prev)}
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+                  secondaryItems.some((s) => s.id === activePage)
+                    ? 'refractive-glass-bubble text-stone-950 dark:text-white font-semibold'
+                    : 'text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-white'
+                }`}
+                title="More gallery chapters & tools"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline">More</span>
+                {favoritesCount > 0 && (
+                  <span className="text-[10px] font-mono tabular-nums text-rose-600 dark:text-rose-400 font-bold">
+                    · {favoritesCount}
+                  </span>
+                )}
+              </button>
+
+              {showMorePagesMenu && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 mt-3 w-56 rounded-2xl bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border border-stone-200/80 dark:border-white/10 shadow-xl p-2 z-50 animate-apple-scale-in"
+                  onClick={() => setShowMorePagesMenu(false)}
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-stone-400">
+                    Archive Chapters
+                  </div>
+                  <div className="space-y-0.5">
+                    {secondaryItems.map((item) => {
+                      const isActive = activePage === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            onNavigate(item.id);
+                            if (searchQuery) onSearchChange('');
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                            isActive
+                              ? 'bg-stone-900 text-white dark:bg-white/15 dark:text-white font-semibold'
+                              : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </div>
+                          {item.id === 'favorites' && favoritesCount > 0 && (
+                            <span className="text-[10px] font-mono tabular-nums font-bold">
+                              {favoritesCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </nav>
+
+          {/* Zone 3: Clean Uncluttered Right Actions (No heavy white bubbles around every icon) */}
+          <div className="relative z-10 flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Subtle Search Input */}
+            <div className="hidden xl:flex relative w-44 2xl:w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
               <input
                 id="gallery-search-input"
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search captures, athletes, gear..."
-                className="w-full pl-9 pr-7 py-1.5 text-xs rounded-full glass-pill text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-500 focus:border-emerald-600 dark:focus:border-emerald-500 focus:outline-none transition-all"
+                placeholder="Search archive..."
+                className="w-full pl-8 pr-6 py-1.5 text-xs rounded-full bg-black/5 dark:bg-white/5 border border-transparent focus:border-stone-300 dark:focus:border-white/20 text-stone-900 dark:text-white placeholder-stone-400 dark:placeholder-stone-500 focus:outline-none transition-all"
               />
               {searchQuery && (
                 <button
                   onClick={() => onSearchChange('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 dark:hover:text-white text-xs"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-900 dark:hover:text-white text-xs"
                 >
                   ✕
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Right Actions: Compact on Mobile to Prevent Clipping */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            
-            {/* Visual Credits Indicator in Navigation Bar (Desktop/Tablet; available inside menu on mobile) */}
+            {/* Credits Indicator (Quiet inline button) */}
             <button
               id="nav-credits-indicator"
               onClick={onOpenAccountModal}
-              title={`You have ${availableCredits} credits. Click to view details and top up.`}
-              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full glass-pill border-amber-300/70 dark:border-amber-500/30 hover:bg-amber-100/60 dark:hover:bg-amber-900/40 transition-all duration-200 group active:scale-95 shadow-2xs"
+              title={`You have ${availableCredits} credits. Click to view details.`}
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-mono font-semibold text-stone-700 dark:text-stone-300 hover:text-stone-950 dark:hover:text-white transition-colors"
             >
-              <div className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                <Coins className="w-2.5 h-2.5 text-amber-700 dark:text-amber-400" />
-              </div>
-              <span className="font-mono text-xs font-bold text-amber-900 dark:text-amber-200">
-                {availableCredits}
-              </span>
-              <span className="hidden md:inline text-[10px] text-amber-800/80 dark:text-amber-300/80 font-medium">
-                cr
-              </span>
+              <Coins className="w-3.5 h-3.5 text-amber-500" />
+              <span className="tabular-nums">{availableCredits}</span>
             </button>
 
             {/* Dark Mode Toggle */}
             <button
               id="dark-mode-toggle-btn"
               onClick={onToggleDarkMode}
-              className="p-2 rounded-full glass-pill text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition-all duration-200 active:scale-90"
+              className="p-2 rounded-full text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition-colors active:scale-90"
               title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
               aria-label="Toggle theme"
             >
               {isDarkMode ? (
                 <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-stone-700" />
+                <Moon className="w-4 h-4" />
               )}
             </button>
 
-            {/* Publish / Upload Button */}
+            {/* Publish Button */}
             <button
               id="nav-publish-btn"
               onClick={() => onNavigate('upload')}
-              className={`flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-xs font-semibold active:scale-95 transition-all ${
-                activePage === 'upload'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 shadow-xs'
-              }`}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-stone-900 dark:bg-white text-white dark:text-black hover:opacity-90 active:scale-95 transition-all"
             >
               <Upload className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Publish</span>
-              <span className="hidden xs:inline sm:hidden">Upload</span>
             </button>
 
-            {/* User Account Avatar Button */}
+            {/* User Account Button */}
             <button
               id="nav-account-btn"
               onClick={onOpenAccountModal}
-              className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full glass-pill hover:border-black dark:hover:border-white transition-all text-left group active:scale-95 shadow-2xs"
-              title="Manage Account, Profile & Credits"
+              className="flex items-center gap-1.5 p-1 sm:pr-2.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-all text-left active:scale-95"
+              title="Manage Google Account, Profile & Credits"
             >
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center font-coolvetica text-[10px] font-bold ${
-                currentUser?.isCreator 
-                  ? 'bg-black dark:bg-stone-700 text-white' 
-                  : 'bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300'
-              }`}>
+              <div className="w-7 h-7 rounded-full bg-emerald-700 text-white flex items-center justify-center font-coolvetica text-[10px] font-bold">
                 {getInitials(currentUser?.displayName || 'User')}
               </div>
-              <div className="hidden md:block">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-stone-900 dark:text-white leading-tight max-w-[85px] truncate">
-                    {currentUser?.displayName ? currentUser.displayName.split(' ')[0] : 'Account'}
-                  </span>
-                  {currentUser?.isCreator && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                  )}
-                </div>
-                <span className="text-[9px] font-mono text-stone-400 dark:text-stone-500 block leading-tight">
-                  {currentUser?.isCreator ? 'Creator' : 'Viewer'}
-                </span>
-              </div>
+              <span className="hidden md:inline text-xs font-medium text-stone-800 dark:text-stone-200 max-w-[76px] truncate">
+                {currentUser?.displayName ? currentUser.displayName.split(' ')[0] : 'Account'}
+              </span>
             </button>
 
-            {/* Language Selector (Desktop/Tablet) */}
+            {/* Language Selector */}
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
-                className="p-2 rounded-full text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-100/80 dark:hover:bg-white/10 transition-colors"
+                className="p-2 rounded-full text-stone-600 dark:text-stone-300 hover:text-stone-950 dark:hover:text-white transition-colors"
                 title="Select language"
               >
                 <Globe className="w-4 h-4" />
@@ -290,7 +332,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               {showLangMenu && (
                 <div 
-                  className="absolute right-0 mt-2 w-36 bg-white/95 dark:bg-stone-900/95 backdrop-blur-xl rounded-2xl shadow-xl border border-stone-200/90 dark:border-white/15 p-1.5 z-50 animate-apple-scale-in"
+                  className="absolute right-0 mt-3 w-36 bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border border-stone-200/80 dark:border-white/10 shadow-xl rounded-2xl p-1.5 z-50 animate-apple-scale-in"
                   onClick={() => setShowLangMenu(false)}
                 >
                   {languages.map((l) => (
@@ -299,12 +341,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                       onClick={() => onLanguageChange(l.code)}
                       className={`w-full text-left px-3 py-1.5 text-xs rounded-xl flex items-center justify-between transition-colors ${
                         currentLang === l.code
-                          ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-semibold'
+                          ? 'bg-stone-900 text-white dark:bg-white/15 dark:text-white font-semibold'
                           : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10'
                       }`}
                     >
                       <span>{l.label}</span>
-                      {currentLang === l.code && <span className="text-emerald-700 dark:text-emerald-400 font-bold">✓</span>}
+                      {currentLang === l.code && <span className="font-bold">✓</span>}
                     </button>
                   ))}
                 </div>
@@ -315,20 +357,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="mobile-menu-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="xl:hidden p-2 rounded-xl text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10 transition-colors"
+              className="md:hidden p-2 rounded-full text-stone-700 dark:text-white transition-colors"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
             </button>
-
           </div>
-
         </div>
 
         {/* Mobile Dropdown Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-stone-200 dark:border-white/10 space-y-2 animate-apple-slide-up">
-            {/* Mobile Search Input */}
+          <div className="md:hidden mt-2 p-4 rounded-3xl bg-white/95 dark:bg-stone-950/95 backdrop-blur-xl border border-stone-200/80 dark:border-white/10 shadow-xl space-y-2 animate-apple-slide-up">
             <div className="relative w-full mb-3">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
@@ -336,60 +375,34 @@ export const Navbar: React.FC<NavbarProps> = ({
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search captures..."
-                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-stone-100 dark:bg-stone-900 text-stone-900 dark:text-white placeholder-stone-400 border border-stone-200 dark:border-white/10 focus:outline-none"
+                className="w-full pl-9 pr-8 py-2 text-xs rounded-full bg-stone-100 dark:bg-white/5 text-stone-900 dark:text-white placeholder-stone-400 focus:outline-none"
               />
             </div>
 
-            {/* Mobile Account & Credits Row */}
-            <button
-              onClick={() => {
-                onOpenAccountModal();
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl text-xs font-medium bg-stone-100/70 dark:bg-stone-900/80 border border-stone-200 dark:border-white/10 text-stone-900 dark:text-white mb-2"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-black dark:bg-stone-700 text-white flex items-center justify-center font-coolvetica text-[10px]">
-                  {getInitials(currentUser?.displayName || 'User')}
-                </div>
-                <span>{currentUser?.displayName || 'Account'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-100/80 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-mono text-[11px] font-bold">
-                <Coins className="w-3 h-3" />
-                <span>{availableCredits} cr</span>
-              </div>
-            </button>
-
-            {navItems.map((item) => {
-              const isActive = activePage === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onNavigate(item.id);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-medium transition-colors ${
-                    isActive
-                      ? 'bg-black text-white dark:bg-white dark:text-stone-950 font-semibold'
-                      : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
+            <div className="grid grid-cols-2 gap-1.5">
+              {allNavItems.map((item) => {
+                const isActive = activePage === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      onNavigate(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                      isActive
+                        ? 'bg-stone-900 text-white dark:bg-white/15 dark:text-white font-semibold'
+                        : 'text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-white/5'
+                    }`}
+                  >
                     {item.icon}
-                    <span>{item.label}</span>
-                  </div>
-                  {item.id === 'favorites' && favoritesCount > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                      {favoritesCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
-
       </div>
     </header>
   );

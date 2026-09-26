@@ -159,8 +159,45 @@ export interface LiveNotification {
 
 export type SupportedLanguage = 'en' | 'es' | 'fr' | 'de' | 'ja';
 
+export type ReactionType = 'heart' | 'clap' | 'fire' | 'star';
+
+export interface PhotoReactionSummary {
+  photoId: string;
+  heart: number;
+  clap: number;
+  fire: number;
+  star: number;
+  totalCount: number;
+  updatedAt: string;
+}
+
+export interface RecentReactionEvent {
+  id: string;
+  photoId: string;
+  userId: string;
+  userName: string;
+  type: ReactionType;
+  createdAt: string;
+}
+
+export interface PhotoComment {
+  id: string;
+  photoId: string;
+  authorId: string;
+  authorName: string;
+  authorRole?: string;
+  authorCamera?: string;
+  text: string;
+  reactionTag?: ReactionType | 'none';
+  heartCount: number;
+  clapCount: number;
+  fireCount: number;
+  createdAt: string;
+}
+
 export interface TranslationDictionary {
   [key: string]: {
     [lang in SupportedLanguage]: string;
   };
 }
+

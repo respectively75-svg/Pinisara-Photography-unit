@@ -32,6 +32,133 @@
     font-family: "Source Serif 4", Georgia, serif;
   }
 
+  /* Refined Subtle Liquid Glass Capsule Bar (Scaled-back white rim, crystal clear translucency) */
+  .refractive-glass-bar {
+    position: relative;
+    background: rgba(255, 255, 255, 0.52);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow:
+      0 10px 28px -10px rgba(0, 0, 0, 0.10),
+      0 2px 6px rgba(0, 0, 0, 0.03);
+    transform: translateZ(0);
+  }
+
+  .dark .refractive-glass-bar {
+    background: rgba(16, 16, 18, 0.65);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow:
+      0 14px 34px -10px rgba(0, 0, 0, 0.65),
+      0 4px 10px rgba(0, 0, 0, 0.35);
+    transform: translateZ(0);
+  }
+
+  /* Subtle Active Droplet Pill inside the Glass Bar (No harsh white ring) */
+  .refractive-glass-bubble {
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.06);
+    transform: translateZ(0);
+  }
+
+  .dark .refractive-glass-bubble {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.45);
+    transform: translateZ(0);
+  }
+
+  /* Flowing Wave Keyframe Animations */
+  @keyframes waveFlowSlow {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    50% {
+      transform: translate3d(-25%, 3px, 0);
+    }
+    100% {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+
+  @keyframes waveFlowReverse {
+    0% {
+      transform: translate3d(-50%, 0, 0);
+    }
+    50% {
+      transform: translate3d(-25%, -3px, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .animate-wave-slow {
+    animation: waveFlowSlow 18s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .animate-wave-reverse {
+    animation: waveFlowReverse 24s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  .animate-wave-fast {
+    animation: waveFlowSlow 12s linear infinite;
+    will-change: transform;
+  }
+
+  /* Tinder-style Floating Reaction Particle Animation */
+  @keyframes tinderFloatUp {
+    0% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(0.6) rotate(0deg);
+    }
+    35% {
+      opacity: 1;
+      transform: translate3d(var(--tx, 12px), -55px, 0) scale(1.25) rotate(var(--rot, -10deg));
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(calc(var(--tx, 12px) * 1.8), -150px, 0) scale(0.85) rotate(calc(var(--rot, 12deg) * 1.5));
+    }
+  }
+
+  .animate-tinder-particle {
+    animation: tinderFloatUp 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    pointer-events: none;
+  }
+
+  @keyframes tinderStampPop {
+    0% {
+      opacity: 0;
+      transform: scale(1.8) rotate(-14deg);
+    }
+    25% {
+      opacity: 1;
+      transform: scale(0.96) rotate(-12deg);
+    }
+    40% {
+      opacity: 1;
+      transform: scale(1.04) rotate(-12deg);
+    }
+    80% {
+      opacity: 1;
+      transform: scale(1) rotate(-12deg);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.9) rotate(-12deg);
+    }
+  }
+
+  .animate-tinder-stamp {
+    animation: tinderStampPop 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
   /* Liquid Glass with Pure Optical Blur & Zero White Fade (GPU Composited) */
   .liquid-glass {
     background: rgba(255, 255, 255, 0.75);

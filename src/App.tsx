@@ -40,7 +40,7 @@ import {
   ChroniclePage,
   LetsTalkPage
 } from './components/ExtraProfessionalPages';
-import { Camera, Smartphone, ArrowRight, ArrowUp, ShieldCheck, Sparkles, Coins, Layers, Activity as ActivityIcon, Trash2, RotateCcw } from 'lucide-react';
+import { Camera, Smartphone, ArrowRight, ArrowUp, ShieldCheck, Sparkles, Coins, Layers, Activity as ActivityIcon, Trash2, RotateCcw, ImagePlus } from 'lucide-react';
 
 export default function App() {
   // Boot-Up Animation State (Video 3: 0% -> 63% -> 100% with hairline progress bar)
@@ -174,6 +174,38 @@ export default function App() {
       setSelectedPhotoId(null);
     }
     showToast(target ? `Deleted "${target.title}" from the gallery.` : 'Deleted photo from the gallery.');
+  };
+
+  // Change / Replace a single photo's image
+  const heroFileInputRef = React.useRef<HTMLInputElement>(null);
+  const handleChangePhotoImage = (photoId: string, newImageUrl: string) => {
+    setPhotos(prev =>
+      prev.map(p =>
+        p.id === photoId
+          ? {
+              ...p,
+              originalUrl: newImageUrl,
+              webUrl: newImageUrl,
+              mobileUrl: newImageUrl,
+              thumbnailUrl: newImageUrl
+            }
+          : p
+      )
+    );
+    showToast('Photo updated successfully!');
+  };
+
+  const handleHeroFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !photos[0]) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        handleChangePhotoImage(photos[0].id, reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // Delete all default example images at once
@@ -495,14 +527,32 @@ export default function App() {
                       Explore Archive ↓
                     </a>
                     {photos.length > 0 && (
-                      <button
-                        onClick={handleDeleteAllExamplePhotos}
-                        className="px-4 py-2 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-medium flex items-center gap-1.5 transition-all duration-500 shadow-xs"
-                        title="Delete all default example images"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete Example Images</span>
-                      </button>
+                      <>
+                        <input
+                          ref={heroFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleHeroFileSelect}
+                          className="hidden"
+                        />
+                        <button
+                          id="hero-change-photo-btn"
+                          onClick={() => heroFileInputRef.current?.click()}
+                          className="px-4 py-2 rounded-full refractive-glass-bubble text-stone-900 dark:text-white text-xs font-semibold flex items-center gap-1.5 transition-all duration-500"
+                          title="Change Hero Photo"
+                        >
+                          <ImagePlus className="w-3.5 h-3.5" />
+                          <span>Change Photo</span>
+                        </button>
+                        <button
+                          onClick={handleDeleteAllExamplePhotos}
+                          className="px-4 py-2 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-medium flex items-center gap-1.5 transition-all duration-500 shadow-xs"
+                          title="Delete all default example images"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Example Images</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -840,6 +890,7 @@ export default function App() {
               onQuickDownload={handleDownload}
               onSharePhoto={(photo) => setSelectedPhotoId(photo.id)}
               onDeletePhoto={handleDeletePhoto}
+              onChangePhoto={handleChangePhotoImage}
               onDeleteAllExamplePhotos={handleDeleteAllExamplePhotos}
               onRestoreExamplePhotos={handleRestoreExamplePhotos}
               viewMode={viewMode}
@@ -1053,9 +1104,11 @@ export default function App() {
           onToggleFavorite={handleToggleFavorite}
           onDownload={handleDownload}
           onDeletePhoto={handleDeletePhoto}
+          onChangePhoto={handleChangePhotoImage}
           currentLang={currentLang}
           allPhotosCount={filteredPhotos.length}
           currentIndex={selectedPhotoIndex >= 0 ? selectedPhotoIndex : 0}
+          currentUser={currentUser}
         />
       )}
 

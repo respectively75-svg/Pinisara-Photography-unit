@@ -17,7 +17,8 @@ import {
   RotateCcw,
   Calendar,
   ArrowUpRight,
-  Contrast
+  Contrast,
+  ImagePlus
 } from 'lucide-react';
 import { Photo, SupportedLanguage } from '../types';
 import { CursorParallaxImage, ScrollParallaxReveal } from './ParallaxAndScroll';
@@ -150,6 +151,7 @@ interface GalleryGridProps {
   onQuickDownload: (photo: Photo, resolution: 'original' | 'web' | 'mobile') => void;
   onSharePhoto: (photo: Photo) => void;
   onDeletePhoto?: (photoId: string) => void;
+  onChangePhoto?: (photoId: string, newImageUrl: string) => void;
   onDeleteAllExamplePhotos?: () => void;
   onRestoreExamplePhotos?: () => void;
   viewMode: 'masonry' | 'grid';
@@ -165,6 +167,7 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
   onQuickDownload,
   onSharePhoto,
   onDeletePhoto,
+  onChangePhoto,
   onDeleteAllExamplePhotos,
   onRestoreExamplePhotos,
   viewMode,
@@ -175,6 +178,23 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
   const [quickViewPhoto, setQuickViewPhoto] = useState<Photo | null>(null);
   const [inlineHudPhotoIds, setInlineHudPhotoIds] = useState<string[]>([]);
   const [showSeriouslyTooltip, setShowSeriouslyTooltip] = useState<boolean>(false);
+  const [changingPhotoId, setChangingPhotoId] = useState<string | null>(null);
+  const cardFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleCardFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !changingPhotoId || !onChangePhoto) return;
+    const targetId = changingPhotoId;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        onChangePhoto(targetId, reader.result);
+      }
+      setChangingPhotoId(null);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const toggleInlineHud = (photoId: string) => {
     setInlineHudPhotoIds((prev) =>
@@ -285,6 +305,23 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
                   <Aperture className="w-3 h-3 text-emerald-400" />
                   <span>Quick View</span>
                 </button>
+
+                {onChangePhoto && (
+                  <button
+                    id={`photo-change-btn-${photo.id}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setChangingPhotoId(photo.id);
+                      cardFileInputRef.current?.click();
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-full bg-black/65 hover:bg-emerald-600 text-white font-mono text-[10px] font-semibold border border-white/20 shadow-xs transition-all duration-300 active:scale-95"
+                    title="Change / Replace this photo"
+                    aria-label="Change photo"
+                  >
+                    <ImagePlus className="w-3 h-3 text-emerald-400" />
+                    <span>Change Photo</span>
+                  </button>
+                )}
 
                 <button
                   id={`photo-favorite-btn-${photo.id}`}
@@ -606,6 +643,13 @@ export const GalleryGrid: React.FC<GalleryGridProps> = ({
 
   return (
     <div id="gallery-grid-container" className="max-w-6xl mx-auto px-4 sm:px-8 lg:px-12 pb-24 pt-6">
+      <input
+        ref={cardFileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCardFileChange}
+        className="hidden"
+      />
       {highContrastMode && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black border-2 border-amber-400 text-xs shadow-lg animate-apple-fade-in">
           <div className="flex items-center gap-2.5">

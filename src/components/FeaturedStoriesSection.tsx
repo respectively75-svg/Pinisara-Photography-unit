@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { Photo } from '../types';
 import { CursorParallaxImage, ScrollParallaxReveal } from './ParallaxAndScroll';
 
@@ -16,7 +16,6 @@ interface EditorialStory {
   category: string;
   service: string;
   year: string;
-  defaultCoords: { x: number; y: number };
   mainPhoto: Photo | undefined;
   insetPhoto: Photo | undefined;
 }
@@ -25,8 +24,6 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
   photos,
   onSelectPhoto
 }) => {
-  const coordRefs = useRef<Record<string, HTMLDivElement | null>>({});
-
   const stories: EditorialStory[] = [
     {
       indexLabel: '(01)',
@@ -37,7 +34,6 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
       category: 'Morning Assembly',
       service: 'Canon Kiss F & Phone Snapshots',
       year: '2026',
-      defaultCoords: { x: 4940, y: 2540 },
       mainPhoto: photos[0],
       insetPhoto: photos[1] || photos[0]
     },
@@ -51,7 +47,6 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
       category: 'School Ceremony',
       service: 'Canon 2000D 50mm & S20 Ultra',
       year: '2026',
-      defaultCoords: { x: 3540, y: 3160 },
       mainPhoto: photos[2] || photos[1],
       insetPhoto: photos[3] || photos[2] || photos[0]
     },
@@ -62,10 +57,9 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
       titleSuffix: ' Skies',
       description:
         'Walking between the debating hall and prefect election booths with our cameras and phones to capture student speeches, ballot boxes, and proud new prefects.',
-      category: 'Student Life',
+      category: 'School Life',
       service: 'iPhone 13 & Samsung S20 Ultra',
       year: '2026',
-      defaultCoords: { x: 2540, y: 4370 },
       mainPhoto: photos[8] || photos[4] || photos[0],
       insetPhoto: photos[4] || photos[5] || photos[1]
     },
@@ -78,34 +72,17 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
       category: 'Radio & Sports',
       service: 'Phone Camera & DSLR Handheld',
       year: '2026',
-      defaultCoords: { x: 4120, y: 1980 },
       mainPhoto: photos[6] || photos[0],
       insetPhoto: photos[7] || photos[6] || photos[1]
     }
   ];
-
-  const handleMouseMove = (
-    e: React.MouseEvent<HTMLDivElement>,
-    indexLabel: string,
-    baseCoords: { x: number; y: number }
-  ) => {
-    const labelEl = coordRefs.current[indexLabel];
-    if (!labelEl) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const relX = Math.round(((e.clientX - rect.left) / rect.width) * 1200);
-    const relY = Math.round(((e.clientY - rect.top) / rect.height) * 900);
-    const x = baseCoords.x - 600 + relX;
-    const y = baseCoords.y - 450 + relY;
-    labelEl.textContent = `X:${x}  Y:${y}`;
-  };
 
   return (
     <section
       id="featured-stories-section"
       className="w-full bg-white dark:bg-black text-stone-900 dark:text-white border-t border-stone-200 dark:border-white/15 transition-colors duration-1000"
     >
-      {/* Top Bar with "Featured Stories" Pill (Unclipped Single-Line on Mobile) */}
+      {/* Top Bar with "Featured Stories" Pill */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-6 sm:py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 dark:border-white/15">
         <span className="self-start px-4 py-1.5 rounded-full bg-stone-100 dark:bg-white/10 border border-stone-200/80 dark:border-white/20 text-stone-800 dark:text-white text-xs font-sans font-medium whitespace-nowrap shrink-0">
           Featured Stories
@@ -118,7 +95,6 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
       {/* Sequential Split-Screen Story Rows ((01), (02), (03), (04)) */}
       <div className="max-w-7xl mx-auto divide-y divide-stone-200 dark:divide-white/15">
         {stories.map((story) => {
-          const coords = story.defaultCoords;
           const mainImg =
             story.mainPhoto?.originalUrl ||
             'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1400&q=80';
@@ -174,17 +150,15 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN: Full-Bleed Story Canvas with Cursor Parallax + Center Framed Loupe */}
+                {/* RIGHT COLUMN: Full-Bleed Story Canvas with Cursor Parallax + Clean Center Framed Loupe (Coordinates Removed) */}
                 <CursorParallaxImage
                   src={mainImg}
                   alt={`${story.titlePrefix}${story.titleItalic}`}
                   intensity={30}
                   tiltIntensity={4}
-                  onMouseMove={(e) => handleMouseMove(e, story.indexLabel, story.defaultCoords)}
                   onClick={() => story.mainPhoto && onSelectPhoto(story.mainPhoto)}
                   containerClassName="lg:col-span-8 min-h-[440px] sm:min-h-[580px] lg:min-h-[680px] bg-black cursor-pointer group"
                 >
-                  {/* Center Framed Detail Window with Live X / Y Coordinates & Counter-Parallax */}
                   <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
                     <div
                       onClick={(e) => {
@@ -193,15 +167,6 @@ export const FeaturedStoriesSection: React.FC<FeaturedStoriesSectionProps> = ({
                       }}
                       className="pointer-events-auto relative w-60 sm:w-80 md:w-96 aspect-4/3 transition-all duration-1200 cubic-bezier(0.16, 1, 0.3, 1) group-hover:scale-105"
                     >
-                      <div
-                        ref={(el) => {
-                          coordRefs.current[story.indexLabel] = el;
-                        }}
-                        className="inline-block mb-1.5 px-2.5 py-0.5 rounded-md bg-black/75 border border-white/20 text-white font-mono text-[11px] font-semibold tracking-wider whitespace-pre"
-                      >
-                        {`X:${coords.x}  Y:${coords.y}`}
-                      </div>
-
                       <div className="w-full h-full border-2 border-white shadow-[0_25px_70px_-10px_rgba(0,0,0,0.85)] overflow-hidden bg-black">
                         <img
                           src={insetImg}
