@@ -40,7 +40,7 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
       specs: 'Shot on Canon 2000D · Handheld'
     },
     broadcast: {
-      watermark: 'School Life',
+      watermark: 'Campus Life',
       subtitle: 'Pinisara Photography · Morning Radio & Prefect Polls',
       description:
         'Quick candid photos taken on Sayul’s iPhone 13 inside the school radio room and during student voting—simple, real school memories.',
@@ -304,13 +304,13 @@ export const SeamlessPortalSection: React.FC<SeamlessPortalSectionProps> = ({
 
                 <button
                   onClick={() => setActiveStudioTab('broadcast')}
-                  className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors duration-300 ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-medium whitespace-nowrap transition-colors duration-300 ${
                     activeStudioTab === 'broadcast'
                       ? 'bg-white text-black font-semibold'
                       : 'text-white/75 hover:text-white'
                   }`}
                 >
-                  <span>School Life</span>
+                  <span>Campus Life</span>
                   {activeStudioTab !== 'broadcast' && currentStudio.rightPreview && (
                     <img src={currentStudio.rightPreview} alt="" className="w-5 h-4 rounded-sm object-cover hidden sm:block" />
                   )}

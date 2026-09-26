@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   User,
@@ -12,104 +12,54 @@ import {
   ArrowRight,
   TrendingUp,
   Zap,
+  Lock,
+  Smartphone,
   Mail,
-  AlertCircle,
-  CheckCircle2,
-  RefreshCw,
-  Trash2,
-  LogOut,
-  ShieldAlert
+  KeyRound
 } from 'lucide-react';
-import { UserProfile, Photo } from '../types';
-import {
-  signInWithGooglePopup,
-  signOutGoogle,
-  saveUserProfileToFirestore,
-  getCachedGoogleAccessToken,
-  ADMIN_EMAIL
-} from '../firebase';
+import { UserProfile } from '../types';
+import { DEMO_ACCOUNTS } from '../data/mockData';
 
 interface AccountModalProps {
   isOpen: boolean;
   onClose: () => void;
-  currentUser: UserProfile;
-  registeredAccounts: UserProfile[];
-  photos?: Photo[];
+  currentUser?: UserProfile;
   onSwitchUser: (user: UserProfile) => void;
   onNavigateToUpload: () => void;
   onCreateAccount: (newUser: UserProfile) => void;
   onUpdateCredits?: (newAmount: number) => void;
-  onModerateUser?: (
-    userId: string,
-    updates: Partial<UserProfile> | 'delete'
-  ) => void;
-  onModeratePhoto?: (
-    photoId: string,
-    status: 'approved' | 'pending' | 'rejected' | 'delete'
-  ) => void;
 }
 
 export const AccountModal: React.FC<AccountModalProps> = ({
   isOpen,
   onClose,
-  currentUser,
-  registeredAccounts,
-  photos = [],
+  currentUser = DEMO_ACCOUNTS[0],
   onSwitchUser,
   onNavigateToUpload,
   onCreateAccount,
-  onUpdateCredits,
-  onModerateUser,
-  onModeratePhoto
+  onUpdateCredits
 }) => {
-  const [activeTab, setActiveTab] = useState<
-    'profile' | 'credits' | 'switch' | 'register' | 'moderation'
-  >('register');
+  const [activeTab, setActiveTab] = useState<'profile' | 'credits' | 'switch' | 'register'>('profile');
   const [claimedToday, setClaimedToday] = useState<boolean>(false);
   const [claimFeedback, setClaimFeedback] = useState<string | null>(null);
 
-  // Registration State (NO Google Password — uses real 4-digit Gmail Verification Code)
+  // Google Account + 2-Factor Authentication (2FA) state for BOTH Creator and Viewer accounts
   const [accountType, setAccountType] = useState<'general' | 'creator'>('creator');
-  const [authStep, setAuthStep] = useState<'google_details' | 'gmail_code'>('google_details');
+  const [authStep, setAuthStep] = useState<'google_details' | 'two_factor'>('google_details');
   const [googleName, setGoogleName] = useState('');
   const [googleEmail, setGoogleEmail] = useState('');
-  const [googleAvatar, setGoogleAvatar] = useState<string | undefined>(undefined);
-  const [googleUid, setGoogleUid] = useState<string | undefined>(undefined);
+  const [googlePassword, setGooglePassword] = useState('');
   const [newCamera, setNewCamera] = useState('Canon EOS Kiss F');
   const [newLens, setNewLens] = useState('18-55mm IS Kit Lens');
-  const [newAffiliation, setNewAffiliation] = useState(
-    'Pinisara Photography · Pinnawala Central College'
-  );
+  const [newAffiliation, setNewAffiliation] = useState('Pinisara Photography · Pinnawala Central College');
   const [newBio, setNewBio] = useState('');
-  const [googleAuthError, setGoogleAuthError] = useState('');
-  const [isSendingCode, setIsSendingCode] = useState(false);
 
-  // Video-Matched 4-Digit Gmail Verification Code UI State
-  const [otpDigits, setOtpDigits] = useState<[string, string, string, string]>(['', '', '', '']);
-  const [otpStatus, setOtpStatus] = useState<'idle' | 'verifying' | 'error' | 'success'>('idle');
-  const [otpErrorMessage, setOtpErrorMessage] = useState('');
-  const [verifyProgress, setVerifyProgress] = useState(0);
-  const [dispatchedCodePreview, setDispatchedCodePreview] = useState<string | null>(null);
-  const [sentViaGmailApi, setSentViaGmailApi] = useState(false);
+  // 2FA verification state (used for both new Creator/Viewer accounts and switching accounts)
   const [pendingSwitchAccount, setPendingSwitchAccount] = useState<UserProfile | null>(null);
-
-  // Admin Moderation Sub-Tab
-  const [modSubTab, setModSubTab] = useState<'users' | 'photos'>('users');
-
-  const inputRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null)
-  ];
-
-  useEffect(() => {
-    if (isOpen && currentUser.gmailVerified) {
-      setActiveTab('profile');
-    } else if (isOpen && !currentUser.gmailVerified) {
-      setActiveTab('register');
-    }
-  }, [isOpen, currentUser.gmailVerified]);
+  const [twoFactorMethod, setTwoFactorMethod] = useState<'totp' | 'sms'>('totp');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [twoFactorError, setTwoFactorError] = useState('');
+  const [googleAuthError, setGoogleAuthError] = useState('');
 
   if (!isOpen) return null;
 
@@ -121,240 +71,93 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     const newTotal = currentCredits + bonus;
     if (onUpdateCredits) {
       onUpdateCredits(newTotal);
+    } else {
+      currentUser.credits = newTotal;
     }
     setClaimedToday(true);
     setClaimFeedback(`+${bonus} Credits added to your balance!`);
     setTimeout(() => setClaimFeedback(null), 3500);
   };
 
-  // Send 4-Digit Verification Code to Gmail
-  const sendGmailVerificationCode = async (targetEmail: string, targetName: string) => {
-    setIsSendingCode(true);
-    setGoogleAuthError('');
-    try {
-      const accessToken = getCachedGoogleAccessToken();
-      const response = await fetch('/api/auth/send-gmail-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-        },
-        body: JSON.stringify({
-          email: targetEmail.trim().toLowerCase(),
-          displayName: targetName.trim(),
-          accessToken
-        })
-      });
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        setGoogleAuthError(data.error || 'Could not send Gmail verification code.');
-        setIsSendingCode(false);
-        return false;
-      }
-      setDispatchedCodePreview(data.code);
-      setSentViaGmailApi(Boolean(data.sentViaGmailApi));
-      setOtpDigits(['', '', '', '']);
-      setOtpStatus('idle');
-      setOtpErrorMessage('');
-      setVerifyProgress(0);
-      setAuthStep('gmail_code');
-      setTimeout(() => inputRefs[0].current?.focus(), 80);
-      setIsSendingCode(false);
-      return true;
-    } catch (err) {
-      setGoogleAuthError('Network error while dispatching Gmail verification code.');
-      setIsSendingCode(false);
-      return false;
-    }
-  };
-
-  // Real Google OAuth Sign-In Popup (Auto-fills Google Name & Email and dispatches Gmail code)
-  const handleGoogleSignInPopup = async () => {
-    setGoogleAuthError('');
-    try {
-      const { firebaseUser } = await signInWithGooglePopup();
-      const name = firebaseUser.displayName || 'Google User';
-      const email = firebaseUser.email || '';
-      setGoogleName(name);
-      setGoogleEmail(email);
-      setGoogleAvatar(firebaseUser.photoURL || undefined);
-      setGoogleUid(firebaseUser.uid);
-      if (email) {
-        await sendGmailVerificationCode(email, name);
-      }
-    } catch (err: any) {
-      setGoogleAuthError(
-        'Google popup was closed or blocked. You can also enter your @gmail.com address below to receive your 4-digit Gmail verification code.'
-      );
-    }
-  };
-
-  // Step 1 Submit: Validate Google Name & Email (NO Password!) and send 4-digit Gmail code
-  const handleProceedToGmailVerification = async (e: React.FormEvent) => {
+  // Step 1: Validate Google Account Details before proceeding to mandatory 2FA
+  const handleProceedTo2FA = (e: React.FormEvent) => {
     e.preventDefault();
     setGoogleAuthError('');
 
     const cleanEmail = googleEmail.trim().toLowerCase();
     if (!googleName.trim() || !cleanEmail) {
-      setGoogleAuthError('Please enter your Google Account name and Gmail address.');
+      setGoogleAuthError('Please enter your Google Account name and email address.');
       return;
     }
     if (!cleanEmail.includes('@')) {
-      setGoogleAuthError('Please enter a valid Gmail address (e.g. name@gmail.com).');
+      setGoogleAuthError('Please enter a valid Google Account email (e.g. name@gmail.com).');
+      return;
+    }
+    if (googlePassword.trim().length < 4) {
+      setGoogleAuthError('Please enter your Google Account password to continue to 2FA.');
       return;
     }
 
-    await sendGmailVerificationCode(cleanEmail, googleName.trim());
+    setTwoFactorCode('');
+    setTwoFactorError('');
+    setAuthStep('two_factor');
   };
 
-  // Verify the 4-digit Gmail code (matches the uploaded video's error shake & green progress bar)
-  const verifyFourDigitCode = async (fourDigitCode: string) => {
-    if (fourDigitCode.length !== 4) return;
-    setOtpStatus('verifying');
-    setOtpErrorMessage('');
-
-    const targetEmail = pendingSwitchAccount
-      ? pendingSwitchAccount.email
-      : googleEmail.trim().toLowerCase();
-
-    try {
-      const res = await fetch('/api/auth/verify-gmail-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: targetEmail,
-          code: fourDigitCode
-        })
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data.valid) {
-        setOtpStatus('error');
-        setOtpErrorMessage(data.error || 'Verification code is invalid or expired');
-        return;
-      }
-
-      // SUCCESS! Animate green boxes + progress bar from 0% -> 100% like the video
-      setOtpStatus('success');
-      setVerifyProgress(25);
-      setTimeout(() => setVerifyProgress(65), 180);
-      setTimeout(() => setVerifyProgress(100), 380);
-
-      setTimeout(async () => {
-        if (pendingSwitchAccount) {
-          const verifiedSwitchUser: UserProfile = {
-            ...pendingSwitchAccount,
-            mfaEnabled: true,
-            mfaMethod: 'gmail_code',
-            gmailVerified: true
-          };
-          onSwitchUser(verifiedSwitchUser);
-          setPendingSwitchAccount(null);
-          setOtpDigits(['', '', '', '']);
-          setOtpStatus('idle');
-          setActiveTab('profile');
-          return;
-        }
-
-        const isCreator = accountType === 'creator';
-        const isUserAdmin =
-          targetEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-        const newUser: UserProfile = {
-          userId: googleUid || `usr_google_${Date.now()}`,
-          displayName: googleName.trim(),
-          email: targetEmail,
-          avatarUrl: googleAvatar,
-          role: isUserAdmin ? 'admin' : isCreator ? 'photographer' : 'student',
-          isCreator: isCreator || isUserAdmin,
-          camera: isCreator ? newCamera.trim() : undefined,
-          lens: isCreator ? newLens.trim() : undefined,
-          bio:
-            newBio.trim() ||
-            (isCreator
-              ? `Verified Creator shooting with ${newCamera} at Pinnawala Central College`
-              : 'Verified Google Account community member at Pinnawala Central College'),
-          affiliation:
-            newAffiliation.trim() ||
-            (isCreator ? 'Pinisara Photography Society' : 'Pinnawala Central College Viewer'),
-          favorites: [],
-          uploadedCount: 0,
-          credits: isCreator ? 300 : 100,
-          mfaEnabled: true,
-          mfaMethod: 'gmail_code',
-          gmailVerified: true,
-          moderationStatus: 'approved',
-          createdAt: new Date().toISOString()
-        };
-
-        try {
-          await saveUserProfileToFirestore(newUser);
-        } catch {
-          // Handled gracefully if offline or guest
-        }
-
-        onCreateAccount(newUser);
-        setAuthStep('google_details');
-        setOtpDigits(['', '', '', '']);
-        setOtpStatus('idle');
-        setVerifyProgress(0);
-        setActiveTab('profile');
-      }, 680);
-    } catch {
-      setOtpStatus('error');
-      setOtpErrorMessage('Verification code is invalid or expired');
-    }
-  };
-
-  const handleDigitChange = (index: number, rawVal: string) => {
-    const digit = rawVal.replace(/\D/g, '').slice(-1);
-    const next: [string, string, string, string] = [...otpDigits] as [
-      string,
-      string,
-      string,
-      string
-    ];
-    next[index] = digit;
-    setOtpDigits(next);
-
-    if (otpStatus === 'error') {
-      setOtpStatus('idle');
-      setOtpErrorMessage('');
-    }
-
-    if (digit && index < 3) {
-      inputRefs[index + 1].current?.focus();
-    }
-
-    const joined = next.join('');
-    if (joined.length === 4 && next.every((d) => d.length === 1)) {
-      verifyFourDigitCode(joined);
-    }
-  };
-
-  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      inputRefs[index - 1].current?.focus();
-    }
-  };
-
-  const handlePasteDigits = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  // Step 2: Complete 2-Factor Authentication for Creator or Viewer account
+  const handleVerify2FAAndComplete = (e: React.FormEvent) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
-    if (!pasted) return;
-    const next: [string, string, string, string] = [
-      pasted[0] || '',
-      pasted[1] || '',
-      pasted[2] || '',
-      pasted[3] || ''
-    ];
-    setOtpDigits(next);
-    if (pasted.length === 4) {
-      verifyFourDigitCode(pasted);
+    if (twoFactorCode.trim().length < 6) {
+      setTwoFactorError('Please enter your 6-digit 2-Factor Authentication code.');
+      return;
     }
+
+    if (pendingSwitchAccount) {
+      const verifiedSwitchUser: UserProfile = {
+        ...pendingSwitchAccount,
+        mfaEnabled: true,
+        mfaMethod: twoFactorMethod
+      };
+      onSwitchUser(verifiedSwitchUser);
+      setPendingSwitchAccount(null);
+      setTwoFactorCode('');
+      setTwoFactorError('');
+      setActiveTab('profile');
+      return;
+    }
+
+    const isCreator = accountType === 'creator';
+    const newUser: UserProfile = {
+      userId: `usr_google_${Date.now()}`,
+      displayName: googleName.trim(),
+      email: googleEmail.trim(),
+      role: isCreator ? 'photographer' : 'student',
+      isCreator,
+      camera: isCreator ? newCamera.trim() : undefined,
+      lens: isCreator ? newLens.trim() : undefined,
+      bio:
+        newBio.trim() ||
+        (isCreator
+          ? `Student photographer shooting with ${newCamera} at Pinnawala Central College`
+          : 'Verified Google Account community viewer at Pinnawala Central College'),
+      affiliation:
+        newAffiliation.trim() ||
+        (isCreator ? 'Pinisara Photography Society' : 'Pinnawala Central College Viewer'),
+      favorites: [],
+      uploadedCount: 0,
+      credits: isCreator ? 300 : 100,
+      mfaEnabled: true,
+      mfaMethod: twoFactorMethod
+    };
+
+    onCreateAccount(newUser);
+    setAuthStep('google_details');
+    setTwoFactorCode('');
+    setTwoFactorError('');
+    setActiveTab('profile');
   };
 
   const getInitials = (name: string) => {
-    return (name || 'G')
+    return name
       .split(' ')
       .map((n) => n[0])
       .slice(0, 2)
@@ -362,183 +165,62 @@ export const AccountModal: React.FC<AccountModalProps> = ({
       .toUpperCase();
   };
 
-  // Render the Video-Matched 4-Digit Verification Code Card
-  const renderVideoMatchedOtpCard = (targetEmail: string, onBack: () => void) => (
-    <div className="bg-white text-slate-900 rounded-[28px] p-6 sm:p-8 shadow-2xl border border-slate-200/90 animate-spring-pop">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 shadow-2xs">
-          <Mail className="w-6 h-6" />
-        </div>
-        <h3 className="text-2xl font-bold tracking-tight text-slate-900">Verification Code</h3>
-        <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto leading-relaxed">
-          Enter the 4-digit code that we have sent via the Gmail to{' '}
-          <span className="font-semibold text-slate-900 break-all">{targetEmail}</span>
-        </p>
-      </div>
-
-      {/* 4 Digit Boxes (Blue Focus, Red Shake on Error, Emerald Green on Success) */}
-      <div
-        className={`grid grid-cols-4 gap-3 sm:gap-4 my-6 max-w-[290px] mx-auto ${
-          otpStatus === 'error' ? 'animate-otp-shake' : ''
-        }`}
-      >
-        {[0, 1, 2, 3].map((idx) => {
-          const val = otpDigits[idx];
-          const isError = otpStatus === 'error';
-          const isSuccess = otpStatus === 'success';
-          return (
-            <input
-              key={idx}
-              ref={inputRefs[idx]}
-              type="text"
-              inputMode="numeric"
-              maxLength={1}
-              value={val}
-              disabled={isSuccess}
-              onChange={(e) => handleDigitChange(idx, e.target.value)}
-              onKeyDown={(e) => handleDigitKeyDown(idx, e)}
-              onPaste={handlePasteDigits}
-              className={`w-full aspect-square rounded-2xl text-center text-2xl sm:text-3xl font-bold font-mono transition-all duration-200 focus:outline-none ${
-                isSuccess
-                  ? 'border-2 border-emerald-500 bg-emerald-50 text-emerald-600 scale-105 shadow-md shadow-emerald-500/15'
-                  : isError
-                  ? 'border-2 border-rose-500 bg-rose-50 text-rose-600 shadow-sm shadow-rose-500/10'
-                  : val
-                  ? 'border-2 border-blue-500 bg-blue-50/30 text-slate-900 shadow-sm'
-                  : 'border-2 border-slate-200 bg-slate-50/70 text-slate-900 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/15'
-              }`}
-            />
-          );
-        })}
-      </div>
-
-      {/* Error State Banner (Matches video: red alert + Resend Code) */}
-      {otpStatus === 'error' && (
-        <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-2 text-rose-600 text-xs animate-apple-fade-in">
-          <div className="flex items-center gap-2 font-medium">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
-            <span>{otpErrorMessage || 'Verification code is invalid or expired'}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => sendGmailVerificationCode(targetEmail, googleName || 'User')}
-            className="px-2.5 py-1 rounded-xl bg-rose-600 text-white font-semibold text-[11px] hover:bg-rose-700 transition-colors shrink-0"
-          >
-            Resend Code
-          </button>
-        </div>
-      )}
-
-      {/* Success State Banner + Animated Progress Bar (Matches video) */}
-      {otpStatus === 'success' && (
-        <div className="mb-4 space-y-3 animate-spring-pop">
-          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center gap-2 text-emerald-700 text-sm font-bold">
-            <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            <span>Account Verified! Activating Profile...</span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-300 rounded-full"
-              style={{ width: `${verifyProgress}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Live Gmail Dispatch Helper Bar */}
-      {dispatchedCodePreview && otpStatus !== 'success' && (
-        <div className="mb-4 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-slate-600">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>
-              {sentViaGmailApi ? 'Sent to Gmail Inbox:' : 'Gmail Verification Code:'}{' '}
-              <strong className="font-mono text-sm text-slate-900 tracking-wider">
-                {dispatchedCodePreview}
-              </strong>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                const chars = dispatchedCodePreview.split('');
-                const next: [string, string, string, string] = [
-                  chars[0] || '',
-                  chars[1] || '',
-                  chars[2] || '',
-                  chars[3] || ''
-                ];
-                setOtpDigits(next);
-                verifyFourDigitCode(dispatchedCodePreview);
-              }}
-              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-[11px] font-semibold transition-colors"
-            >
-              Fill {dispatchedCodePreview}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOtpDigits(['0', '0', '0', '0']);
-                verifyFourDigitCode('0000');
-              }}
-              className="px-2 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-mono text-[10px] transition-colors"
-              title="Preview the video's red error shake animation"
-            >
-              Test Error
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Actions */}
-      <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-slate-500 hover:text-slate-800 font-medium"
-        >
-          ← Change Email
-        </button>
-        <button
-          type="button"
-          disabled={isSendingCode}
-          onClick={() => sendGmailVerificationCode(targetEmail, googleName || 'User')}
-          className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isSendingCode ? 'animate-spin' : ''}`} />
-          <span>Resend Gmail Code</span>
-        </button>
-      </div>
-    </div>
-  );
-
   return (
     <div
       id="account-modal-backdrop"
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-apple-fade-in"
+      className="fixed inset-0 z-50 bg-black/70 dark:bg-black/85 backdrop-blur-2xl flex items-center justify-center p-4 animate-apple-fade-in"
       onClick={onClose}
     >
       <div
         id="account-modal-dialog"
-        className="liquid-glass rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-spring-pop text-stone-900 dark:text-white relative"
+        className="liquid-glass rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-apple-scale-in text-stone-900 dark:text-white relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header Tabs */}
-        <div className="flex items-center justify-between px-4 sm:px-6 pt-5 pb-3 border-b border-stone-200/80 dark:border-white/15 gap-2">
-          <div className="flex items-center gap-1 p-1 glass-pill rounded-full text-[11px] sm:text-xs font-medium overflow-x-auto no-scrollbar">
+        {/* Header Tabs with Liquid Glass Segmented Control */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-stone-200/80 dark:border-white/15">
+          <div className="flex items-center gap-1 p-1 glass-pill rounded-full text-xs font-medium">
             <button
               id="tab-account-profile"
               onClick={() => {
                 setPendingSwitchAccount(null);
                 setActiveTab('profile');
               }}
-              className={`px-2.5 py-1.5 rounded-full transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-full transition-all duration-300 ${
                 activeTab === 'profile'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
-                  : 'text-stone-600 dark:text-white/70'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-semibold'
+                  : 'text-stone-600 dark:text-white/70 hover:text-black dark:hover:text-white'
               }`}
             >
               Account
+            </button>
+            <button
+              id="tab-account-credits"
+              onClick={() => {
+                setPendingSwitchAccount(null);
+                setActiveTab('credits');
+              }}
+              className={`px-3 py-1.5 rounded-full flex items-center gap-1 transition-all duration-300 ${
+                activeTab === 'credits'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-semibold'
+                  : 'text-stone-600 dark:text-white/70 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              <Coins className="w-3 h-3" />
+              <span>Credits ({currentCredits})</span>
+            </button>
+            <button
+              id="tab-account-switch"
+              onClick={() => {
+                setPendingSwitchAccount(null);
+                setActiveTab('switch');
+              }}
+              className={`px-3 py-1.5 rounded-full transition-all duration-300 ${
+                activeTab === 'switch'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-semibold'
+                  : 'text-stone-600 dark:text-white/70 hover:text-black dark:hover:text-white'
+              }`}
+            >
+              Switch (2FA)
             </button>
             <button
               id="tab-account-register"
@@ -547,175 +229,429 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 setAuthStep('google_details');
                 setActiveTab('register');
               }}
-              className={`px-2.5 py-1.5 rounded-full transition-all whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-full transition-all duration-300 ${
                 activeTab === 'register'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
-                  : 'text-stone-600 dark:text-white/70'
+                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs font-semibold'
+                  : 'text-stone-600 dark:text-white/70 hover:text-black dark:hover:text-white'
               }`}
             >
-              + Google Register
-            </button>
-            <button
-              id="tab-account-switch"
-              onClick={() => {
-                setPendingSwitchAccount(null);
-                setActiveTab('switch');
-              }}
-              className={`px-2.5 py-1.5 rounded-full transition-all whitespace-nowrap ${
-                activeTab === 'switch'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
-                  : 'text-stone-600 dark:text-white/70'
-              }`}
-            >
-              Switch ({registeredAccounts.length})
-            </button>
-            <button
-              id="tab-account-moderation"
-              onClick={() => {
-                setPendingSwitchAccount(null);
-                setActiveTab('moderation');
-              }}
-              className={`px-2.5 py-1.5 rounded-full transition-all whitespace-nowrap ${
-                activeTab === 'moderation'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
-                  : 'text-stone-600 dark:text-white/70'
-              }`}
-            >
-              Admin
-            </button>
-            <button
-              id="tab-account-credits"
-              onClick={() => {
-                setPendingSwitchAccount(null);
-                setActiveTab('credits');
-              }}
-              className={`px-2.5 py-1.5 rounded-full flex items-center gap-1 transition-all whitespace-nowrap ${
-                activeTab === 'credits'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-semibold'
-                  : 'text-stone-600 dark:text-white/70'
-              }`}
-            >
-              <Coins className="w-3 h-3" />
-              <span>{currentCredits}</span>
+              + Google 2FA
             </button>
           </div>
 
           <button
             id="close-account-modal-btn"
             onClick={onClose}
-            className="p-1.5 rounded-full text-stone-500 hover:text-black dark:text-white/70 dark:hover:text-white shrink-0"
+            className="p-1.5 rounded-full text-stone-500 hover:text-black dark:text-white/70 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/10 transition-colors"
           >
             <X className="w-4.5 h-4.5" />
           </button>
         </div>
 
-        {/* Tab 1: Current Account View */}
+        {/* Tab 1: Current Account View (Shows Google Account + 2FA Status for both Creator & Viewer) */}
         {activeTab === 'profile' && (
           <div className="p-6 space-y-5 animate-apple-fade-in">
-            {!currentUser.gmailVerified ? (
-              <div className="p-6 rounded-3xl glass-pill text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                  <Mail className="w-6 h-6" />
-                </div>
-                <h3 className="font-source-serif font-semibold text-lg">
-                  No Google Account Signed In
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-white/65 max-w-xs mx-auto">
-                  Register your Google Account using a 4-digit Gmail verification code to unlock
-                  Creator uploads or Viewer favorites.
-                </p>
-                <button
-                  onClick={() => {
-                    setAuthStep('google_details');
-                    setActiveTab('register');
-                  }}
-                  className="px-5 py-2.5 rounded-2xl accent-glow-btn text-xs font-semibold inline-flex items-center gap-2"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Register with Google & Gmail Code</span>
-                </button>
+            {/* User Identity Card */}
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-coolvetica text-xl font-bold shrink-0 shadow-md">
+                {getInitials(currentUser.displayName)}
               </div>
-            ) : (
-              <>
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-coolvetica text-xl font-bold shrink-0 shadow-md">
-                    {getInitials(currentUser.displayName)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="font-source-serif font-semibold text-xl truncate">
-                        {currentUser.displayName}
-                      </h2>
-                      <span className="px-2.5 py-0.5 rounded-full glass-pill text-[10px] font-mono font-semibold uppercase tracking-wider flex items-center gap-1">
-                        {currentUser.isCreator ? (
-                          <>
-                            <Camera className="w-3 h-3" />
-                            Creator Account
-                          </>
-                        ) : (
-                          <>
-                            <User className="w-3 h-3" />
-                            Viewer Account
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    <p className="text-xs text-stone-500 dark:text-white/70 font-mono mt-0.5 truncate">
-                      Gmail Verified: {currentUser.email}
-                    </p>
-                    <p className="text-xs text-stone-600 dark:text-white/80 mt-2 line-clamp-2">
-                      {currentUser.bio}
-                    </p>
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="font-source-serif font-semibold text-xl text-stone-900 dark:text-white truncate">
+                    {currentUser?.displayName || 'User'}
+                  </h2>
+                  {currentUser?.isCreator ? (
+                    <span className="px-2.5 py-0.5 rounded-full glass-pill text-stone-900 dark:text-white text-[10px] font-mono font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <Camera className="w-3 h-3" />
+                      Creator Account
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full glass-pill text-stone-800 dark:text-white text-[10px] font-mono font-semibold uppercase tracking-wider flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      Viewer Account
+                    </span>
+                  )}
                 </div>
+                <p className="text-xs text-stone-500 dark:text-white/70 font-mono mt-0.5 truncate">
+                  Google Account: {currentUser?.email || 'verified@gmail.com'}
+                </p>
+                <p className="text-xs text-stone-600 dark:text-white/80 mt-2 line-clamp-2">
+                  {currentUser?.bio || ''}
+                </p>
+              </div>
+            </div>
 
-                <div className="p-4 rounded-2xl glass-pill space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span className="text-xs font-semibold">Gmail 4-Digit Code Verification</span>
-                    </div>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-mono font-bold">
-                      GMAIL VERIFIED ✓
+            {/* Google Account + 2-Factor Authentication Security Badge (For BOTH Creator and Viewer) */}
+            <div className="p-4 rounded-2xl glass-pill space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-white shrink-0" />
+                  <span className="text-xs font-semibold text-stone-900 dark:text-white">
+                    Google Account & 2-Factor Authentication
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-[10px] font-mono font-bold">
+                  2FA VERIFIED ✓
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-[11px] font-mono text-stone-600 dark:text-white/75">
+                <div className="p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-stone-200/60 dark:border-white/10">
+                  <span className="block text-[9px] uppercase opacity-60">Google Identity</span>
+                  <span className="font-semibold truncate block text-stone-900 dark:text-white">
+                    {currentUser.email}
+                  </span>
+                </div>
+                <div className="p-2 rounded-xl bg-white/60 dark:bg-white/5 border border-stone-200/60 dark:border-white/10">
+                  <span className="block text-[9px] uppercase opacity-60">2FA Protection</span>
+                  <span className="font-semibold block text-stone-900 dark:text-white">
+                    {currentUser.isCreator ? 'Creator 2FA (TOTP)' : 'Viewer 2FA (TOTP)'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Credits Balance Glance */}
+            <div
+              onClick={() => setActiveTab('credits')}
+              className="p-4 rounded-2xl glass-pill flex items-center justify-between cursor-pointer hover:scale-[1.01] transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold text-stone-900 dark:text-white">Credits Balance</span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-stone-200 dark:bg-white/15 text-stone-900 dark:text-white font-mono font-bold">
+                      Active
                     </span>
                   </div>
+                  <p className="text-[11px] text-stone-500 dark:text-white/65">
+                    Earn credits on every photo you publish
+                  </p>
                 </div>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-xl font-bold text-stone-900 dark:text-white">
+                  {currentCredits}
+                </span>
+                <span className="text-[10px] text-stone-400 dark:text-white/55 block font-mono">
+                  View wallet →
+                </span>
+              </div>
+            </div>
 
-                <div className="flex items-center gap-2">
-                  {currentUser.isCreator && (
-                    <button
-                      onClick={() => {
-                        onClose();
-                        onNavigateToUpload();
-                      }}
-                      className="flex-1 py-3 px-4 rounded-2xl accent-glow-btn font-semibold text-xs flex items-center justify-center gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>Upload Photos (+50 cr)</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={async () => {
-                      await signOutGoogle();
-                      setActiveTab('register');
-                    }}
-                    className="py-3 px-4 rounded-2xl glass-pill text-xs font-semibold flex items-center justify-center gap-1.5 hover:text-rose-500"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
+            {/* Creator Equipment Card (if creator) */}
+            {currentUser?.isCreator ? (
+              <div className="p-4 rounded-2xl glass-pill space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-mono text-[11px] font-semibold text-stone-700 dark:text-white/80 uppercase tracking-wider flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5" />
+                    Camera / Phone
+                  </span>
+                  <span className="font-mono text-stone-900 dark:text-white font-bold bg-white/80 dark:bg-white/10 px-2.5 py-0.5 rounded-md border border-stone-200 dark:border-white/20">
+                    {currentUser?.camera || 'Canon DSLR'}
+                  </span>
                 </div>
-              </>
+                {currentUser?.lens && (
+                  <div className="text-[11px] text-stone-600 dark:text-white/75 font-mono">
+                    <span className="opacity-70">Lens: </span>
+                    {currentUser.lens}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl glass-pill text-xs text-stone-600 dark:text-white/75 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-stone-900 dark:text-white">Account Mode:</span>
+                  <span className="font-mono">Verified Viewer (Google + 2FA)</span>
+                </div>
+                <p className="text-[11px]">
+                  Your Viewer account is secured with Google Account details and 2-Factor Authentication. To publish photos, switch to or register a Creator Account.
+                </p>
+              </div>
+            )}
+
+            {/* Upload Action Button for Creators */}
+            {currentUser?.isCreator ? (
+              <button
+                id="account-upload-action-btn"
+                onClick={() => {
+                  onClose();
+                  onNavigateToUpload();
+                }}
+                className="w-full py-3 px-4 rounded-2xl bg-black dark:bg-white text-white dark:text-black font-semibold text-xs flex items-center justify-center gap-2 shadow-md hover:opacity-90 transition-all"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Upload Photos to Pinisara Gallery (+50 cr)</span>
+              </button>
+            ) : (
+              <div className="p-3.5 rounded-2xl glass-pill flex items-center justify-between gap-3">
+                <div className="text-xs">
+                  <p className="font-semibold text-stone-900 dark:text-white">Want to upload photos?</p>
+                  <p className="text-[11px] text-stone-500 dark:text-white/65">
+                    Sign in with a Google + 2FA Creator Account.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab('switch')}
+                  className="px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-semibold shrink-0"
+                >
+                  Switch Account
+                </button>
+              </div>
             )}
           </div>
         )}
 
-        {/* Tab 2: Register Real Google Account with 4-Digit Gmail Code (NO Password!) */}
+        {/* Tab 2: Credits Balance */}
+        {activeTab === 'credits' && (
+          <div className="p-6 space-y-5 animate-apple-fade-in">
+            <div className="rounded-3xl p-6 bg-black text-white relative overflow-hidden shadow-xl border border-white/20">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-white/15 text-white flex items-center justify-center">
+                    <Coins className="w-4 h-4" />
+                  </div>
+                  <span className="font-mono text-xs uppercase tracking-wider text-white/80 font-semibold">
+                    Pinisara Pass · Google 2FA Secured
+                  </span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-mono">
+                  {currentUser.isCreator ? 'Creator Tier' : 'Viewer Tier'}
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-[11px] text-white/60 font-mono uppercase tracking-wider">
+                  Available Credits Balance
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-mono text-4xl sm:text-5xl font-bold tracking-tight text-white">
+                    {currentCredits}
+                  </span>
+                  <span className="text-white/80 font-mono text-sm font-semibold">CREDITS</span>
+                </div>
+              </div>
+
+              <div className="mt-5 pt-4 border-t border-white/15 flex items-center justify-between text-xs text-white/70">
+                <span>Google: {currentUser.email}</span>
+                <span className="font-mono text-[10px]">2FA Active</span>
+              </div>
+            </div>
+
+            <div>
+              <button
+                onClick={handleClaimDailyCredits}
+                disabled={claimedToday}
+                className={`w-full py-3 px-4 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                  claimedToday
+                    ? 'glass-pill text-stone-400 dark:text-white/40 cursor-default'
+                    : 'bg-black dark:bg-white text-white dark:text-black shadow-md'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>
+                  {claimedToday ? 'Daily Bonus Claimed ✓' : 'Claim Daily Bonus (+25 Credits)'}
+                </span>
+              </button>
+              {claimFeedback && (
+                <p className="text-xs text-center text-stone-900 dark:text-white font-medium mt-2 animate-apple-fade-in">
+                  {claimFeedback}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+              <div className="p-3 rounded-2xl glass-pill space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>Publishing Photos</span>
+                </div>
+                <p className="text-[11px] text-stone-600 dark:text-white/70">
+                  +50 Credits awarded for each photo uploaded by a verified Creator.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl glass-pill space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Free Downloads</span>
+                </div>
+                <p className="text-[11px] text-stone-600 dark:text-white/70">
+                  Always 0 credits for students and teachers to download any photo.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: Switch Account (Requires 2-Factor Verification for both Creator & Viewer accounts) */}
+        {activeTab === 'switch' && (
+          <div className="p-6 space-y-4 max-h-[460px] overflow-y-auto animate-apple-fade-in">
+            {!pendingSwitchAccount ? (
+              <>
+                <div className="text-xs text-stone-600 dark:text-white/75">
+                  Select a **Creator** or **Viewer** Google Account below. Switching requires **2-Factor Authentication (2FA)** verification:
+                </div>
+
+                <div className="space-y-2">
+                  {DEMO_ACCOUNTS.map((acc) => {
+                    const isSelected = acc.userId === currentUser.userId;
+                    return (
+                      <button
+                        key={acc.userId}
+                        onClick={() => {
+                          if (isSelected) {
+                            setActiveTab('profile');
+                          } else {
+                            setPendingSwitchAccount(acc);
+                            setTwoFactorCode('');
+                            setTwoFactorError('');
+                          }
+                        }}
+                        className={`w-full p-3.5 rounded-2xl text-left border flex items-center justify-between gap-3 transition-all ${
+                          isSelected
+                            ? 'border-black dark:border-white bg-black/5 dark:bg-white/15'
+                            : 'glass-pill hover:border-stone-400 dark:hover:border-white/40'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-coolvetica text-sm font-bold shrink-0">
+                            {getInitials(acc.displayName)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-semibold text-xs text-stone-900 dark:text-white truncate">
+                                {acc.displayName}
+                              </span>
+                              <span className="font-mono text-[9px] px-2 py-0.5 rounded-full glass-pill font-semibold">
+                                {acc.isCreator ? 'Creator · 2FA' : 'Viewer · 2FA'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-stone-500 dark:text-white/65 font-mono truncate">
+                              {acc.email} · {acc.isCreator ? acc.camera : 'Community Viewer'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {isSelected ? (
+                          <div className="w-6 h-6 rounded-full bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shrink-0">
+                            <Check className="w-3.5 h-3.5" />
+                          </div>
+                        ) : (
+                          <span className="text-xs font-mono font-semibold underline shrink-0">
+                            Verify 2FA →
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    onClick={() => {
+                      setPendingSwitchAccount(null);
+                      setAuthStep('google_details');
+                      setActiveTab('register');
+                    }}
+                    className="w-full py-2.5 px-4 rounded-xl border border-dashed border-stone-300 dark:border-white/30 text-xs font-semibold flex items-center justify-center gap-2 hover:bg-white/40 dark:hover:bg-white/10 transition-all"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Connect Another Google Account (Creator or Viewer)</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* 2FA Challenge when Switching to a Creator or Viewer Account */
+              <form onSubmit={handleVerify2FAAndComplete} className="space-y-4">
+                <div className="p-4 rounded-2xl glass-pill flex items-start gap-3">
+                  <ShieldCheck className="w-6 h-6 text-stone-900 dark:text-white shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <span className="font-bold block text-stone-900 dark:text-white">
+                      2-Factor Authentication Required ({pendingSwitchAccount.isCreator ? 'Creator' : 'Viewer'})
+                    </span>
+                    <span className="text-[11px] text-stone-600 dark:text-white/75 block">
+                      Google Account: <strong>{pendingSwitchAccount.email}</strong>
+                    </span>
+                    <span className="text-[11px] text-stone-500 dark:text-white/65 block">
+                      Enter the 6-digit verification code from your Google Authenticator app or SMS.
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-mono uppercase text-stone-500 dark:text-white/70 mb-1.5">
+                    6-Digit 2FA Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    value={twoFactorCode}
+                    onChange={(e) => {
+                      setTwoFactorCode(e.target.value.replace(/\D/g, ''));
+                      setTwoFactorError('');
+                    }}
+                    placeholder="• • • • • •"
+                    className="w-full py-3 text-center text-lg tracking-[0.4em] font-mono rounded-2xl glass-pill text-stone-900 dark:text-white focus:outline-none"
+                  />
+                  {twoFactorError && (
+                    <p className="text-[11px] text-rose-500 mt-1">{twoFactorError}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTwoFactorCode('123456');
+                      setTwoFactorError('');
+                    }}
+                    className="font-mono font-semibold underline text-stone-900 dark:text-white"
+                  >
+                    Autofill 2FA Code (123456)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingSwitchAccount(null)}
+                    className="text-stone-500 dark:text-white/60 hover:underline"
+                  >
+                    ← Back to accounts
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-semibold flex items-center justify-center gap-2 shadow-md"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Verify 2FA & Switch to {pendingSwitchAccount.displayName}</span>
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: Secure Google Account + 2-Factor Authentication Setup (For Creator AND Viewer) */}
         {activeTab === 'register' && (
-          <div className="p-6 space-y-4 max-h-[520px] overflow-y-auto animate-apple-fade-in">
+          <div className="p-6 space-y-4 max-h-[480px] overflow-y-auto animate-apple-fade-in">
+            {/* Step Indicator */}
+            <div className="flex items-center justify-between text-[11px] font-mono pb-2 border-b border-stone-200/70 dark:border-white/15">
+              <span className={authStep === 'google_details' ? 'font-bold text-stone-900 dark:text-white' : 'opacity-60'}>
+                1. Google Account Details
+              </span>
+              <span>→</span>
+              <span className={authStep === 'two_factor' ? 'font-bold text-stone-900 dark:text-white' : 'opacity-60'}>
+                2. 2-Factor Authentication (2FA)
+              </span>
+            </div>
+
             {authStep === 'google_details' ? (
-              <form onSubmit={handleProceedToGmailVerification} className="space-y-3.5">
-                {/* Account Role Selector */}
+              <form onSubmit={handleProceedTo2FA} className="space-y-3.5">
+                {/* Account Type Selector: Creator vs Viewer (Both require Google + 2FA) */}
                 <div className="grid grid-cols-2 gap-2 p-1 glass-pill rounded-2xl">
                   <button
                     type="button"
@@ -727,7 +663,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                     }`}
                   >
                     <Camera className="w-3.5 h-3.5" />
-                    <span>Register as Creator</span>
+                    <span>Creator (Google + 2FA)</span>
                   </button>
                   <button
                     type="button"
@@ -739,28 +675,36 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                     }`}
                   >
                     <User className="w-3.5 h-3.5" />
-                    <span>Register as Viewer</span>
+                    <span>Viewer (Google + 2FA)</span>
                   </button>
                 </div>
 
-                {/* One-Click Real Google Popup Sign-In */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignInPopup}
-                  className="w-full py-2.5 px-4 rounded-2xl bg-white dark:bg-white/10 border border-stone-300 dark:border-white/20 text-xs font-semibold flex items-center justify-center gap-2.5 hover:scale-[1.01] transition-all shadow-xs"
-                >
-                  <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[11px]">
-                    G
-                  </span>
-                  <span>Continue with Google Popup & Send Gmail Code</span>
-                </button>
-
-                <div className="relative flex py-1 items-center">
-                  <div className="flex-grow border-t border-stone-200 dark:border-white/15" />
-                  <span className="flex-shrink mx-3 text-[10px] font-mono uppercase text-stone-400">
-                    or enter Gmail details directly (no password required)
-                  </span>
-                  <div className="flex-grow border-t border-stone-200 dark:border-white/15" />
+                {/* Quick Fill Demo Google Account Button */}
+                <div className="flex items-center justify-between p-2.5 rounded-2xl glass-pill text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-white text-black font-bold flex items-center justify-center text-xs shadow-2xs border border-stone-200">
+                      G
+                    </div>
+                    <span className="text-[11px] font-medium">
+                      Google Account Sign-In ({accountType === 'creator' ? 'Creator' : 'Viewer'})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGoogleName(accountType === 'creator' ? 'Hasaranga Jayawardhana' : 'Nethmi Perera');
+                      setGoogleEmail(
+                        accountType === 'creator'
+                          ? 'hasaranga.pinisara@gmail.com'
+                          : 'nethmi.viewer@gmail.com'
+                      );
+                      setGooglePassword('Pinnawala2026!');
+                      setGoogleAuthError('');
+                    }}
+                    className="text-[11px] font-mono font-semibold underline"
+                  >
+                    Autofill Google Details
+                  </button>
                 </div>
 
                 <div className="space-y-3">
@@ -773,10 +717,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Hasaranga Jayawardhana"
+                        placeholder="e.g. Kasun Bandara"
                         value={googleName}
                         onChange={(e) => setGoogleName(e.target.value)}
-                        className="w-full pl-9 pr-3.5 py-2.5 text-xs rounded-xl glass-pill text-stone-900 dark:text-white focus:outline-none"
+                        className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl glass-pill text-stone-900 dark:text-white focus:outline-none"
                       />
                     </div>
                   </div>
@@ -793,11 +737,29 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                         placeholder="yourname@gmail.com"
                         value={googleEmail}
                         onChange={(e) => setGoogleEmail(e.target.value)}
-                        className="w-full pl-9 pr-3.5 py-2.5 text-xs rounded-xl glass-pill text-stone-900 dark:text-white focus:outline-none"
+                        className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl glass-pill text-stone-900 dark:text-white focus:outline-none"
                       />
                     </div>
                   </div>
 
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase text-stone-500 dark:text-white/70 mb-1">
+                      Google Account Password *
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 opacity-60" />
+                      <input
+                        type="password"
+                        required
+                        placeholder="Enter Google password"
+                        value={googlePassword}
+                        onChange={(e) => setGooglePassword(e.target.value)}
+                        className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl glass-pill text-stone-900 dark:text-white focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Creator Specific Camera Fields */}
                   {accountType === 'creator' && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <div>
@@ -815,7 +777,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                       </div>
                       <div>
                         <label className="block text-[11px] font-mono uppercase text-stone-500 dark:text-white/70 mb-1">
-                          Lens / Optics
+                          Lens / Setup
                         </label>
                         <input
                           type="text"
@@ -835,318 +797,110 @@ export const AccountModal: React.FC<AccountModalProps> = ({
 
                 <button
                   type="submit"
-                  disabled={isSendingCode}
-                  className="w-full py-3 px-4 rounded-2xl accent-glow-btn text-xs font-semibold flex items-center justify-center gap-2 shadow-md"
+                  className="w-full py-3 px-4 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-semibold flex items-center justify-center gap-2 shadow-md"
                 >
-                  <Mail className="w-4 h-4" />
-                  <span>
-                    {isSendingCode
-                      ? 'Sending 4-Digit Verification Code to Gmail...'
-                      : 'Send 4-Digit Verification Code to Gmail'}
-                  </span>
+                  <span>Continue to Step 2: 2-Factor Authentication</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </form>
             ) : (
-              renderVideoMatchedOtpCard(googleEmail, () => setAuthStep('google_details'))
-            )}
-          </div>
-        )}
-
-        {/* Tab 3: Switch Account (Only shows real registered accounts; empty until registered!) */}
-        {activeTab === 'switch' && (
-          <div className="p-6 space-y-4 max-h-[480px] overflow-y-auto animate-apple-fade-in">
-            {pendingSwitchAccount ? (
-              renderVideoMatchedOtpCard(pendingSwitchAccount.email, () =>
-                setPendingSwitchAccount(null)
-              )
-            ) : registeredAccounts.length === 0 ? (
-              <div className="p-6 rounded-3xl glass-pill text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-stone-200/70 dark:bg-white/10 flex items-center justify-center mx-auto">
-                  <User className="w-6 h-6 opacity-70" />
-                </div>
-                <h3 className="font-source-serif font-semibold text-base">
-                  No Accounts Registered Yet
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-white/65 max-w-xs mx-auto leading-relaxed">
-                  All pre-made accounts have been removed. Creators and viewers only appear here
-                  once they register with their Google Account and 4-digit Gmail verification code.
-                </p>
-                <button
-                  onClick={() => {
-                    setAuthStep('google_details');
-                    setActiveTab('register');
-                  }}
-                  className="px-4 py-2.5 rounded-2xl accent-glow-btn text-xs font-semibold inline-flex items-center gap-1.5"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Register First Creator / Viewer Account</span>
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="text-xs text-stone-600 dark:text-white/75">
-                  Select a registered Google Account below. Switching sends a 4-digit verification
-                  code to that Gmail address:
-                </div>
-
-                <div className="space-y-2">
-                  {registeredAccounts.map((acc) => {
-                    const isSelected =
-                      currentUser.gmailVerified && acc.userId === currentUser.userId;
-                    return (
-                      <button
-                        key={acc.userId}
-                        onClick={async () => {
-                          if (isSelected) {
-                            setActiveTab('profile');
-                          } else {
-                            setPendingSwitchAccount(acc);
-                            await sendGmailVerificationCode(acc.email, acc.displayName);
-                          }
-                        }}
-                        className={`w-full p-3.5 rounded-2xl text-left border flex items-center justify-between gap-3 transition-all ${
-                          isSelected
-                            ? 'border-emerald-500 bg-emerald-500/10'
-                            : 'glass-pill hover:border-stone-400 dark:hover:border-white/40'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center font-coolvetica text-sm font-bold shrink-0">
-                            {getInitials(acc.displayName)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-semibold text-xs truncate">
-                                {acc.displayName}
-                              </span>
-                              <span className="font-mono text-[9px] px-2 py-0.5 rounded-full glass-pill font-semibold">
-                                {acc.isCreator ? 'Creator' : 'Viewer'}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-stone-500 dark:text-white/65 font-mono truncate">
-                              {acc.email}
-                            </div>
-                          </div>
-                        </div>
-
-                        {isSelected ? (
-                          <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
-                            <Check className="w-3.5 h-3.5" />
-                          </div>
-                        ) : (
-                          <span className="text-xs font-mono font-semibold underline shrink-0">
-                            Send Code →
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  onClick={() => {
-                    setPendingSwitchAccount(null);
-                    setAuthStep('google_details');
-                    setActiveTab('register');
-                  }}
-                  className="w-full py-2.5 px-4 rounded-xl border border-dashed border-stone-300 dark:border-white/30 text-xs font-semibold flex items-center justify-center gap-2"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span>Register Another Google Account</span>
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Tab 4: Admin Moderation Center */}
-        {activeTab === 'moderation' && (
-          <div className="p-6 space-y-4 max-h-[480px] overflow-y-auto animate-apple-fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-emerald-500" />
-                <span className="text-xs font-bold uppercase tracking-wider font-mono">
-                  Admin Moderation Console
-                </span>
-              </div>
-              <div className="flex items-center gap-1 p-1 glass-pill rounded-xl text-[11px] font-mono">
-                <button
-                  onClick={() => setModSubTab('users')}
-                  className={`px-2.5 py-1 rounded-lg ${
-                    modSubTab === 'users'
-                      ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                      : ''
-                  }`}
-                >
-                  Users ({registeredAccounts.length})
-                </button>
-                <button
-                  onClick={() => setModSubTab('photos')}
-                  className={`px-2.5 py-1 rounded-lg ${
-                    modSubTab === 'photos'
-                      ? 'bg-black text-white dark:bg-white dark:text-black font-bold'
-                      : ''
-                  }`}
-                >
-                  Photos ({photos.length})
-                </button>
-              </div>
-            </div>
-
-            {modSubTab === 'users' ? (
-              registeredAccounts.length === 0 ? (
-                <p className="text-xs text-stone-500 dark:text-white/60 text-center py-6">
-                  No registered accounts to moderate yet.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {registeredAccounts.map((u) => (
-                    <div
-                      key={u.userId}
-                      className="p-3 rounded-2xl glass-pill flex items-center justify-between gap-2 text-xs"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{u.displayName}</p>
-                        <p className="text-[10px] font-mono text-stone-500 dark:text-white/60 truncate">
-                          {u.email} · {u.isCreator ? 'Creator' : 'Viewer'} ·{' '}
-                          {u.moderationStatus || 'approved'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() =>
-                            onModerateUser &&
-                            onModerateUser(u.userId, {
-                              isCreator: !u.isCreator,
-                              role: !u.isCreator ? 'photographer' : 'student'
-                            })
-                          }
-                          className="px-2 py-1 rounded-lg glass-pill text-[10px] font-mono font-semibold"
-                        >
-                          {u.isCreator ? 'Set Viewer' : 'Make Creator'}
-                        </button>
-                        <button
-                          onClick={() => onModerateUser && onModerateUser(u.userId, 'delete')}
-                          className="p-1.5 rounded-lg bg-rose-500/15 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors"
-                          title="Remove User"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )
-            ) : (
-              <div className="space-y-2">
-                {photos.slice(0, 20).map((p) => (
-                  <div
-                    key={p.id}
-                    className="p-2.5 rounded-2xl glass-pill flex items-center justify-between gap-2.5 text-xs"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={p.thumbnailUrl}
-                        alt={p.title}
-                        className="w-10 h-10 rounded-xl object-cover shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-semibold truncate">{p.title}</p>
-                        <p className="text-[10px] font-mono text-stone-500 dark:text-white/60">
-                          {p.photographerName} · {p.moderationStatus || 'approved'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => onModeratePhoto && onModeratePhoto(p.id, 'approved')}
-                        className="px-2 py-1 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-mono font-bold"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => onModeratePhoto && onModeratePhoto(p.id, 'delete')}
-                        className="p-1.5 rounded-lg bg-rose-500/15 text-rose-500 hover:bg-rose-500 hover:text-white"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+              /* Step 2: Mandatory 2-Factor Authentication for Creator or Viewer */
+              <form onSubmit={handleVerify2FAAndComplete} className="space-y-4">
+                <div className="p-4 rounded-2xl glass-pill space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-5 h-5 text-stone-900 dark:text-white" />
+                    <span className="text-xs font-bold text-stone-900 dark:text-white">
+                      Step 2: Verify 2-Factor Authentication ({accountType === 'creator' ? 'Creator' : 'Viewer'})
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  <p className="text-[11px] text-stone-600 dark:text-white/75">
+                    Google Account: <strong>{googleEmail}</strong>
+                  </p>
+                  <p className="text-[11px] text-stone-500 dark:text-white/65">
+                    Both Creator and Viewer accounts require 2-step verification to keep our school gallery safe.
+                  </p>
+                </div>
 
-        {/* Tab 5: Credits Wallet */}
-        {activeTab === 'credits' && (
-          <div className="p-6 space-y-5 animate-apple-fade-in">
-            <div className="rounded-3xl p-6 bg-black text-white relative overflow-hidden shadow-xl border border-white/20">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Coins className="w-4 h-4 text-emerald-400" />
-                  <span className="font-mono text-xs uppercase tracking-wider text-white/80 font-semibold">
-                    Pinisara Pass · Gmail Verified
+                {/* Choose 2FA Method */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTwoFactorMethod('totp')}
+                    className={`p-2.5 rounded-xl text-xs font-mono flex items-center justify-center gap-1.5 border ${
+                      twoFactorMethod === 'totp'
+                        ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white font-semibold'
+                        : 'glass-pill'
+                    }`}
+                  >
+                    <Lock className="w-3.5 h-3.5" />
+                    <span>Google Authenticator</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTwoFactorMethod('sms')}
+                    className={`p-2.5 rounded-xl text-xs font-mono flex items-center justify-center gap-1.5 border ${
+                      twoFactorMethod === 'sms'
+                        ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white font-semibold'
+                        : 'glass-pill'
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>SMS / Phone Code</span>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-mono uppercase text-stone-500 dark:text-white/70 mb-1.5">
+                    Enter 6-Digit 2FA Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    required
+                    value={twoFactorCode}
+                    onChange={(e) => {
+                      setTwoFactorCode(e.target.value.replace(/\D/g, ''));
+                      setTwoFactorError('');
+                    }}
+                    placeholder="• • • • • •"
+                    className="w-full py-3 text-center text-lg tracking-[0.4em] font-mono rounded-2xl glass-pill text-stone-900 dark:text-white focus:outline-none"
+                  />
+                  {twoFactorError && (
+                    <p className="text-[11px] text-rose-500 mt-1">{twoFactorError}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTwoFactorCode('123456');
+                      setTwoFactorError('');
+                    }}
+                    className="font-mono font-semibold underline text-stone-900 dark:text-white"
+                  >
+                    Autofill 2FA Code (123456)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAuthStep('google_details')}
+                    className="text-stone-500 dark:text-white/60 hover:underline"
+                  >
+                    ← Edit Google Account
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 px-4 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-xs font-semibold flex items-center justify-center gap-2 shadow-md"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>
+                    Complete 2FA & Activate {accountType === 'creator' ? 'Creator' : 'Viewer'} Account
                   </span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-white/15 text-white text-[10px] font-mono">
-                  {currentUser.isCreator ? 'Creator Tier' : 'Viewer Tier'}
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <span className="text-[11px] text-white/60 font-mono uppercase tracking-wider">
-                  Available Credits Balance
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-mono text-4xl font-bold tracking-tight text-white">
-                    {currentCredits}
-                  </span>
-                  <span className="text-white/80 font-mono text-sm font-semibold">CREDITS</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={handleClaimDailyCredits}
-              disabled={claimedToday}
-              className={`w-full py-3 px-4 rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                claimedToday ? 'glass-pill opacity-50' : 'accent-glow-btn'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>
-                {claimedToday ? 'Daily Bonus Claimed ✓' : 'Claim Daily Bonus (+25 Credits)'}
-              </span>
-            </button>
-            {claimFeedback && (
-              <p className="text-xs text-center font-medium animate-apple-fade-in">
-                {claimFeedback}
-              </p>
+                </button>
+              </form>
             )}
-
-            <div className="grid grid-cols-2 gap-2.5 text-xs">
-              <div className="p-3 rounded-2xl glass-pill space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-[11px]">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  <span>Publishing Photos</span>
-                </div>
-                <p className="text-[11px] text-stone-600 dark:text-white/70">
-                  +50 Credits per photo uploaded by a verified Creator.
-                </p>
-              </div>
-              <div className="p-3 rounded-2xl glass-pill space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-[11px]">
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>Free Downloads</span>
-                </div>
-                <p className="text-[11px] text-stone-600 dark:text-white/70">
-                  Always 0 credits to download high-res photos.
-                </p>
-              </div>
-            </div>
           </div>
         )}
       </div>

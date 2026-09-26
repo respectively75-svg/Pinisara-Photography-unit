@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { Photo, CategoryInfo, UserProfile } from '../types';
 import { CREATOR_TEAM, CURRENT_USER } from '../data/mockData';
-import { FirebaseImageUploader } from './FirebaseImageUploader';
 
 interface UploadPageProps {
   categories: CategoryInfo[];
@@ -85,20 +84,6 @@ const ASPECT_RATIO_OPTIONS: {
     subtitle: 'Tall Monograph',
     cssRatio: '2 / 3',
     tailwindAspect: 'aspect-2/3'
-  },
-  {
-    id: '9:16',
-    label: '9:16',
-    subtitle: 'Mobile Story',
-    cssRatio: '9 / 16',
-    tailwindAspect: 'aspect-9/16'
-  },
-  {
-    id: '21:9',
-    label: '21:9',
-    subtitle: 'Anamorphic',
-    cssRatio: '21 / 9',
-    tailwindAspect: 'aspect-21/9'
   }
 ];
 
@@ -433,18 +418,6 @@ export const UploadPage: React.FC<UploadPageProps> = ({
             Switch Profile
           </button>
         </div>
-      </div>
-
-      {/* Direct Firebase Storage Bucket Upload Component */}
-      <div className="mb-8">
-        <FirebaseImageUploader
-          categories={categories}
-          currentUser={currentUser}
-          onPhotoUploaded={(newPhoto) => {
-            onAddPhoto(newPhoto);
-            onNavigateToGallery();
-          }}
-        />
       </div>
 
       {/* Upload Form Card */}

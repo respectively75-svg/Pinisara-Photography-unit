@@ -1,6 +1,51 @@
 import { Photo, EventItem, CategoryInfo, UserProfile, LiveNotification, CreatorProfile, CollaborativeSet } from '../types';
 
-export const CREATOR_TEAM: CreatorProfile[] = [];
+export const CREATOR_TEAM: CreatorProfile[] = [
+  {
+    id: 'hasaranga',
+    name: 'Hasaranga Jayawardhana',
+    camera: 'Canon Kiss F',
+    lens: 'Canon EF-S 18-55mm f/3.5-5.6 IS · EF 50mm f/1.8 II',
+    role: 'Lead Sports & Event Photojournalist',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+    handle: '@hasaranga_lens',
+    bio: 'Lead school photojournalist capturing main assemblies, ceremonial pirith blessings, Big Matches, and parliamentary debates with the Canon Kiss F.',
+    photoCount: 8
+  },
+  {
+    id: 'dulen',
+    name: 'Dulen Induwara',
+    camera: 'Canon 2000D',
+    lens: 'Canon EF-S 18-55mm f/3.5-5.6 III · EF 75-300mm f/4-5.6',
+    role: 'Action, Assembly & Turf Media Specialist',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+    handle: '@dulen_shoots',
+    bio: 'Documenting general assembly proceedings, prefect election ballot counting, sports meets, and turf soccer with the Canon 2000D.',
+    photoCount: 7
+  },
+  {
+    id: 'sayul',
+    name: 'Sayul Angammana',
+    camera: 'iPhone 13',
+    lens: 'Dual 12MP System · 26mm ƒ/1.6 Wide · 13mm ƒ/2.4 Ultra Wide',
+    role: 'Sideline, Radio Unit & Candid Photojournalist',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+    handle: '@sayul_mobile',
+    bio: 'Capturing candid student democracy, the morning radio studio booth live on air, and agile wide-angle event spirit with the iPhone 13.',
+    photoCount: 6
+  },
+  {
+    id: 'udula',
+    name: 'Udula Matheesha',
+    camera: 'Samsung S20 Ultra',
+    lens: '108MP Main Sensor · 48MP Periscope 4x Telephoto · 12MP Ultra-Wide',
+    role: 'Ultra-Res, Pirith & Ceremony Specialist',
+    avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=300&q=80',
+    handle: '@udula_s20u',
+    bio: 'Unrivaled 108MP high-resolution detail, sacred Pirith Mandapaya lighting, ceremonial oil lamps, and parliament speaker telephoto zoom with the Samsung S20 Ultra.',
+    photoCount: 6
+  }
+];
 
 export const INITIAL_CATEGORIES: CategoryInfo[] = [
   { id: 'all', name: 'All Captures & Events', slug: 'all', icon: 'Flame', photoCount: 76 },
@@ -258,7 +303,7 @@ export const INITIAL_PHOTOS: Photo[] = [
     id: 'photo-parliament-02',
     eventId: 'evt-school-parliament-2026',
     title: 'Prime Minister & Student Ministers Presenting Welfare Resolution',
-    description: 'Student Prime Minister defending the Eco-Friendly School Bill during cross-bench debate between government ministers and the student opposition.',
+    description: 'Student Prime Minister defending the Eco-Friendly Campus Bill during cross-bench debate between government ministers and the student opposition.',
     category: 'parliament',
     originalUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=2560&q=95',
     webUrl: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=1600&q=85',
@@ -514,24 +559,82 @@ export const INITIAL_NOTIFICATIONS: LiveNotification[] = [
   }
 ];
 
-export const DEMO_ACCOUNTS: UserProfile[] = [];
+export const DEMO_ACCOUNTS: UserProfile[] = [
+  {
+    userId: 'usr_hasaranga',
+    displayName: 'Hasaranga Jayawardhana',
+    email: 'respectively75@gmail.com',
+    role: 'photographer',
+    isCreator: true,
+    camera: 'Canon Kiss F',
+    lens: 'Canon EF-S 18-55mm f/3.5-5.6 IS · EF 50mm f/1.8 II',
+    bio: 'Lead school and sports photojournalist covering main assembly, pirith chanting ceremonies, and varsity athletics.',
+    affiliation: 'Pinisara Photojournalist · Lead',
+    website: 'https://pinisara.org/@hasaranga',
+    favorites: ['photo-assembly-01', 'photo-pirith-01', 'photo-01'],
+    uploadedCount: 8,
+    credits: 520
+  },
+  {
+    userId: 'usr_dulen',
+    displayName: 'Dulen Induwara',
+    email: 'dulen.media@pinisara.org',
+    role: 'photographer',
+    isCreator: true,
+    camera: 'Canon 2000D',
+    lens: 'Canon EF-S 18-55mm f/3.5-5.6 III · EF 75-300mm f/4-5.6',
+    bio: 'Documenting general assembly muster, prefect election ballot counting, and Big Match cricket with the Canon 2000D.',
+    affiliation: 'Pinisara Photojournalist',
+    website: 'https://pinisara.org/@dulen',
+    favorites: ['photo-election-02', 'photo-cricket-01'],
+    uploadedCount: 7,
+    credits: 380
+  },
+  {
+    userId: 'usr_sayul',
+    displayName: 'Sayul Angammana',
+    email: 'sayul.shots@pinisara.org',
+    role: 'photographer',
+    isCreator: true,
+    camera: 'iPhone 13',
+    lens: 'Dual 12MP System · 26mm ƒ/1.6 Wide · 13mm ƒ/2.4 Ultra Wide',
+    bio: 'Capturing candid student democracy, the morning radio broadcasting booth, and sideline sports with the agile iPhone 13.',
+    affiliation: 'Pinisara Sideline & Radio Media',
+    website: 'https://pinisara.org/@sayul',
+    favorites: ['photo-radio-01', 'photo-election-01'],
+    uploadedCount: 6,
+    credits: 340
+  },
+  {
+    userId: 'usr_udula',
+    displayName: 'Udula Matheesha',
+    email: 'udula.optics@pinisara.org',
+    role: 'photographer',
+    isCreator: true,
+    camera: 'Samsung S20 Ultra',
+    lens: '108MP Main Sensor · 48MP Periscope 4x Telephoto · 12MP Ultra-Wide',
+    bio: 'Unrivaled 108MP high-resolution detail, sacred Pirith Mandapaya lighting, and school parliament debate with the Samsung S20 Ultra.',
+    affiliation: 'Pinisara Ultra-Res Specialist',
+    website: 'https://pinisara.org/@udula',
+    favorites: ['photo-pirith-01', 'photo-parliament-01'],
+    uploadedCount: 6,
+    credits: 420
+  },
+  {
+    userId: 'usr_student',
+    displayName: 'Thilina Perera',
+    email: 'thilina.p@student.ac.lk',
+    role: 'student',
+    isCreator: false,
+    bio: 'School parliament representative and media club student supporter.',
+    affiliation: 'Class of 2026 · Student Council',
+    favorites: ['photo-assembly-01', 'photo-radio-01'],
+    uploadedCount: 0,
+    credits: 150
+  }
+];
 
-export const CURRENT_USER: UserProfile = {
-  userId: 'guest_unverified',
-  displayName: 'Guest Viewer',
-  email: '',
-  role: 'student',
-  isCreator: false,
-  bio: 'Sign in with your Google Account and verify your 4-digit Gmail code to register as a Creator or Viewer.',
-  affiliation: 'Pinisara Photography · Pinnawala Central College',
-  favorites: [],
-  uploadedCount: 0,
-  credits: 0,
-  mfaEnabled: false,
-  mfaMethod: 'gmail_code',
-  gmailVerified: false,
-  moderationStatus: 'approved'
-};
+export const CURRENT_USER: UserProfile = DEMO_ACCOUNTS[0];
 
 export const INITIAL_COLLABORATIVE_SETS: CollaborativeSet[] = [
   {
@@ -705,7 +808,7 @@ export const INITIAL_COLLABORATIVE_SETS: CollaborativeSet[] = [
     category: 'parliament',
     date: '2026-09-16',
     venue: 'Parliamentary Debating Chamber',
-    description: 'Chamber debate multi-angle coverage: Udula utilized the 4x periscope telephoto lens on the Samsung S20 Ultra to isolate the Speaker of the House and ceremonial mace, while Hasaranga documented the Prime Minister and cross-bench ministers delivering arguments on the school resolution.',
+    description: 'Chamber debate multi-angle coverage: Udula utilized the 4x periscope telephoto lens on the Samsung S20 Ultra to isolate the Speaker of the House and ceremonial mace, while Hasaranga documented the Prime Minister and cross-bench ministers delivering arguments on the campus resolution.',
     team: ['Udula Matheesha', 'Hasaranga Jayawardhana', 'Dulen Induwara'],
     leadPhotographer: 'Udula Matheesha',
     fieldBriefing: 'Periscope telephoto on the Speaker podium + wide debate angle of the government and opposition benches.',
@@ -730,7 +833,7 @@ export const INITIAL_COLLABORATIVE_SETS: CollaborativeSet[] = [
         camera: 'Canon Kiss F',
         lens: 'Canon EF-S 18-55mm f/3.5-5.6 IS',
         role: 'Ministerial Floor Lead',
-        focalPoint: 'Student Prime Minister defending the Eco-School resolution'
+        focalPoint: 'Student Prime Minister defending the Eco-Campus resolution'
       }
     ],
     stats: {

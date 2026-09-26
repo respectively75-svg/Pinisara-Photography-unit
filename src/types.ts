@@ -23,7 +23,7 @@ export interface Photo {
   webUrl: string;
   mobileUrl?: string;
   thumbnailUrl: string;
-  aspectRatio: '3:2' | '16:9' | '16:10' | '4:3' | '4:5' | '1:1' | '2:3' | '3:4' | '9:16' | '21:9' | 'original';
+  aspectRatio: '3:2' | '16:9' | '16:10' | '4:3' | '4:5' | '1:1' | '2:3';
   objectFit?: 'cover' | 'contain' | 'fill';
   objectPosition?: string;
   resolution?: string;
@@ -46,7 +46,6 @@ export interface Photo {
   dateTaken: string;
   createdAt: string;
   isFavorited?: boolean;
-  moderationStatus?: 'approved' | 'pending' | 'rejected';
 }
 
 export interface CreatorProfile {
@@ -137,10 +136,7 @@ export interface UserProfile {
   uploadedCount?: number;
   credits: number;
   mfaEnabled?: boolean;
-  mfaMethod?: 'totp' | 'sms' | 'gmail_code' | 'none';
-  gmailVerified?: boolean;
-  moderationStatus?: 'approved' | 'pending' | 'suspended';
-  createdAt?: string;
+  mfaMethod?: 'totp' | 'sms' | 'none';
   notificationPrefs?: {
     gameScores: boolean;
     newGalleries: boolean;

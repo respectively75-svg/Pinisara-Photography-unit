@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowUp, Sliders, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowUp, ShieldCheck } from 'lucide-react';
 import { AppPage } from './Navbar';
 
 interface FloatingBottomDockProps {
@@ -7,7 +7,6 @@ interface FloatingBottomDockProps {
   onNavigate: (page: AppPage) => void;
   onReplayBoot?: () => void;
   onOpenAccountModal?: () => void;
-  onOpenSettingsModal?: () => void;
   isCreator?: boolean;
   mfaVerified?: boolean;
 }
@@ -16,8 +15,10 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   activePage,
   onNavigate,
   onOpenAccountModal,
-  onOpenSettingsModal
+  isCreator = true,
+  mfaVerified = true
 }) => {
+  // Only the 6 most important sections in the bottom navigation bar
   const dockItems: { id: AppPage; label: string }[] = [
     { id: 'gallery', label: 'Home' },
     { id: 'output', label: 'Works' },
@@ -30,13 +31,15 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
   return (
     <div
       id="floating-bottom-dock"
-      className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[96vw] pointer-events-auto animate-spring-pop"
+      className="fixed bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 w-auto max-w-[96vw] pointer-events-auto"
     >
-      <div className="relative flex items-center gap-0.5 sm:gap-1.5 px-1.5 sm:px-2.5 py-1.5 sm:py-2 rounded-full liquid-glass-dock overflow-x-auto no-scrollbar max-w-full">
+      <div
+        className="relative flex items-center gap-0.5 sm:gap-1.5 px-1.5 sm:px-2.5 py-1.5 sm:py-2 rounded-full liquid-glass-dock overflow-x-auto no-scrollbar max-w-full"
+      >
         {/* Scroll to Top Circle Button */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-stone-700 dark:text-white/80 hover:bg-stone-200/60 dark:hover:bg-white/10 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90 shrink-0"
+          className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-stone-700 dark:text-white/80 hover:bg-stone-200/60 dark:hover:bg-white/10 hover:text-black dark:hover:text-white transition-colors duration-200 shrink-0"
           title="Back to top"
           aria-label="Scroll to top"
         >
@@ -55,17 +58,9 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
                   onNavigate(item.id);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                style={
+                className={`px-2.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-sans transition-colors duration-200 whitespace-nowrap shrink-0 ${
                   isActive
-                    ? {
-                        backgroundColor: 'var(--app-accent, #10b981)',
-                        color: '#ffffff'
-                      }
-                    : undefined
-                }
-                className={`px-2.5 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-sans transition-all duration-300 whitespace-nowrap shrink-0 active:scale-95 ${
-                  isActive
-                    ? 'font-semibold shadow-sm scale-[1.03]'
+                    ? 'bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm'
                     : 'text-stone-800 dark:text-white/80 hover:text-black dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-white/10 font-medium'
                 }`}
               >
@@ -75,29 +70,21 @@ export const FloatingBottomDock: React.FC<FloatingBottomDockProps> = ({
           })}
         </nav>
 
-        {/* Account Panel Trigger (Clean "Account" button without "Creator 2FA" label) */}
+        {/* Secure Google + 2FA Account Badge Trigger inside Liquid Glass Bar */}
         {onOpenAccountModal && (
           <button
-            id="bottom-dock-account-btn"
+            id="bottom-dock-account-2fa"
             onClick={onOpenAccountModal}
-            className="relative z-10 ml-0.5 px-2.5 sm:px-3 py-1.5 rounded-full glass-pill flex items-center gap-1.5 text-[11px] sm:text-xs font-medium text-stone-900 dark:text-white hover:bg-stone-200/60 dark:hover:bg-white/15 transition-all duration-200 active:scale-95 shrink-0"
-            title="Open Account Panel (Google Sign-In, Gmail Verification, Admin & Credits)"
+            className="relative z-10 ml-0.5 px-2 sm:pl-2.5 sm:pr-3 py-1.5 rounded-full glass-pill flex items-center gap-1 text-[11px] font-mono text-stone-900 dark:text-white transition-colors duration-200 shrink-0"
+            title="Google Account & 2-Factor Authentication Security (Creator & Viewer)"
           >
-            <User className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--app-accent, #10b981)' }} />
-            <span>Account</span>
-          </button>
-        )}
-
-        {/* Visual & Performance Settings Trigger */}
-        {onOpenSettingsModal && (
-          <button
-            id="bottom-dock-settings-btn"
-            onClick={onOpenSettingsModal}
-            className="relative z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-stone-700 dark:text-white/80 hover:bg-stone-200/60 dark:hover:bg-white/10 hover:text-black dark:hover:text-white transition-all duration-200 active:scale-90 shrink-0"
-            title="Visual & Performance Settings (Blur, Liquid Glass, Colors)"
-            aria-label="Open Visual Settings"
-          >
-            <Sliders className="w-3.5 h-3.5" />
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-white shrink-0" />
+            <span className="hidden md:inline font-semibold">
+              {isCreator ? 'Creator 2FA' : 'Viewer 2FA'}
+            </span>
+            {mfaVerified && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-white" />
+            )}
           </button>
         )}
       </div>

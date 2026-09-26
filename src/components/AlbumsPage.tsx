@@ -50,19 +50,11 @@ export const AlbumsPage: React.FC<AlbumsPageProps> = ({
   const [customThumbUrl, setCustomThumbUrl] = useState<string>('');
   const thumbFileInputRef = useRef<HTMLInputElement>(null);
 
-  const defaultCreator = CREATOR_TEAM[0] || {
-    id: 'hasaranga',
-    name: 'Pinisara Creator',
-    camera: 'Canon EOS Kiss F',
-    lens: '18-55mm IS Kit Lens',
-    role: 'Student Photographer'
-  };
-
   // Multi-image batch upload state for an event
   const [stagedBatchFiles, setStagedBatchFiles] = useState<
     { id: string; title: string; dataUrl: string; setAsCover?: boolean }[]
   >([]);
-  const [batchPhotographerId, setBatchPhotographerId] = useState<string>(defaultCreator.id);
+  const [batchPhotographerId, setBatchPhotographerId] = useState<string>(CREATOR_TEAM[0].id);
   const [batchUrlInput, setBatchUrlInput] = useState<string>('');
   const batchFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,7 +119,7 @@ export const AlbumsPage: React.FC<AlbumsPageProps> = ({
 
   const handleCommitBatchUpload = () => {
     if (!addingPhotosEvent || stagedBatchFiles.length === 0) return;
-    const creator = CREATOR_TEAM.find((c) => c.id === batchPhotographerId) || defaultCreator;
+    const creator = CREATOR_TEAM.find((c) => c.id === batchPhotographerId) || CREATOR_TEAM[0];
     const today = new Date().toISOString().split('T')[0];
 
     const createdPhotos: Photo[] = stagedBatchFiles.map((item, idx) => ({
@@ -169,7 +161,7 @@ export const AlbumsPage: React.FC<AlbumsPageProps> = ({
   const handleCreateNewEventSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle.trim() || !onCreateNewEvent) return;
-    const creator = CREATOR_TEAM.find((c) => c.id === batchPhotographerId) || defaultCreator;
+    const creator = CREATOR_TEAM.find((c) => c.id === batchPhotographerId) || CREATOR_TEAM[0];
     const today = new Date().toISOString().split('T')[0];
     const coverUrl =
       stagedBatchFiles[0]?.dataUrl ||

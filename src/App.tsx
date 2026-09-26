@@ -12,7 +12,6 @@ import {
   CategoryInfo, 
   SupportedLanguage,
   UserProfile,
-  CreatorProfile,
   CollaborativeSet,
   EventItem
 } from './types';
@@ -25,21 +24,6 @@ import { AlbumsPage } from './components/AlbumsPage';
 import { FavoritesPage } from './components/FavoritesPage';
 import { UploadPage } from './components/UploadPage';
 import { AccountModal } from './components/AccountModal';
-import {
-  SettingsModal,
-  DEFAULT_VISUAL_SETTINGS,
-  AppVisualSettings
-} from './components/SettingsModal';
-import {
-  db,
-  collection,
-  onSnapshot,
-  savePhotoToFirestore,
-  deletePhotoFromFirestore,
-  saveUserProfileToFirestore,
-  deleteDoc,
-  doc
-} from './firebase';
 import { CollaborationsPage } from './components/CollaborationsPage';
 import { ActivityFeed } from './components/ActivityFeed';
 import { BootLoader } from './components/BootLoader';
@@ -89,119 +73,9 @@ export default function App() {
   // Interactive First-Page Hero Fan-Out State (matches 00:00 -> 00:04 reference video choreography)
   const [isHeroShowcaseActive, setIsHeroShowcaseActive] = useState<boolean>(false);
 
-  // User & Creator Account State (no hardcoded accounts; only real registered accounts)
+  // User & Creator Account State (with credits balance)
   const [currentUser, setCurrentUser] = useState<UserProfile>(CURRENT_USER);
-  const [registeredAccounts, setRegisteredAccounts] = useState<UserProfile[]>([]);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
-  const [visualSettings, setVisualSettings] = useState<AppVisualSettings>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('pinisara_visual_settings');
-        if (saved) return { ...DEFAULT_VISUAL_SETTINGS, ...JSON.parse(saved) };
-      } catch {
-        // Ignore parse error
-      }
-    }
-    return { ...DEFAULT_VISUAL_SETTINGS, isDarkMode };
-  });
-
-  // Apply customizable Blur, Liquid Glass, Theme Surface, and Accent CSS variables
-  useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--app-blur', `${visualSettings.blurIntensity}px`);
-    root.style.setProperty(
-      '--app-glass-opacity',
-      (visualSettings.liquidGlassIntensity / 100).toFixed(2)
-    );
-    root.style.setProperty(
-      '--app-glass-dark-opacity',
-      Math.min(0.98, visualSettings.liquidGlassIntensity / 100 + 0.02).toFixed(2)
-    );
-    root.style.setProperty(
-      '--app-glass-border',
-      (visualSettings.glassSpecularBorder / 100).toFixed(2)
-    );
-    root.style.setProperty('--app-accent', visualSettings.accentColor);
-    root.style.setProperty('--app-accent-soft', `${visualSettings.accentColor}2e`);
-    root.style.setProperty('--app-bg-light', visualSettings.lightSurfaceColor);
-    root.style.setProperty('--app-bg-dark', visualSettings.darkSurfaceColor);
-    root.style.setProperty('--app-anim-speed', visualSettings.enhancedAnimations ? '1' : '0.05');
-    try {
-      localStorage.setItem('pinisara_visual_settings', JSON.stringify(visualSettings));
-    } catch {
-      // Ignore storage error
-    }
-  }, [visualSettings]);
-
-  const handleUpdateVisualSettings = (updates: Partial<AppVisualSettings>) => {
-    setVisualSettings((prev) => {
-      const next = { ...prev, ...updates };
-      if (typeof updates.isDarkMode === 'boolean' && updates.isDarkMode !== isDarkMode) {
-        setIsDarkMode(updates.isDarkMode);
-      }
-      return next;
-    });
-  };
-
-  // Sync registered users from Firestore /users collection
-  useEffect(() => {
-    const unsubUsers = onSnapshot(
-      collection(db, 'users'),
-      (snap) => {
-        const loaded: UserProfile[] = [];
-        snap.forEach((docSnap) => {
-          const d = docSnap.data();
-          loaded.push({
-            userId: d.userId || docSnap.id,
-            displayName: d.displayName || 'Google User',
-            email: d.email || 'verified@gmail.com',
-            role: d.role || 'student',
-            avatarUrl: d.avatarUrl,
-            bio: d.bio || '',
-            affiliation: d.affiliation || 'Pinisara Photography',
-            camera: d.camera,
-            lens: d.lens,
-            isCreator: Boolean(d.isCreator || d.role === 'photographer' || d.role === 'admin'),
-            credits: typeof d.credits === 'number' ? d.credits : 300,
-            favorites: [],
-            gmailVerified: true,
-            moderationStatus: d.moderationStatus || 'approved',
-            createdAt: d.createdAt
-          });
-        });
-        if (loaded.length > 0) {
-          setRegisteredAccounts((prev) => {
-            const map = new Map<string, UserProfile>();
-            prev.forEach((u) => map.set(u.userId, u));
-            loaded.forEach((u) => map.set(u.userId, u));
-            return Array.from(map.values());
-          });
-        }
-      },
-      () => {}
-    );
-    return () => unsubUsers();
-  }, []);
-
-  // Creators list is empty until creators register as creators
-  const activeCreators = useMemo<CreatorProfile[]>(() => {
-    return registeredAccounts
-      .filter((u) => u.isCreator && u.moderationStatus !== 'suspended')
-      .map((u) => ({
-        id: u.userId,
-        name: u.displayName,
-        camera: u.camera || 'Canon DSLR',
-        lens: u.lens || '18-55mm IS',
-        role: u.role === 'admin' ? 'Admin & Lead Photographer' : 'Registered Creator',
-        avatar:
-          u.avatarUrl ||
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
-        handle: `@${u.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-        bio: u.bio || `Verified Creator shooting with ${u.camera || 'Canon DSLR'}`,
-        photoCount: u.uploadedCount || 1
-      }));
-  }, [registeredAccounts]);
 
   // Application State
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>('en');
@@ -219,27 +93,7 @@ export default function App() {
   const [photos, setPhotos] = useState<Photo[]>(INITIAL_PHOTOS);
   const [events, setEvents] = useState<EventItem[]>(INITIAL_EVENTS);
   const [categories, setCategories] = useState<CategoryInfo[]>(INITIAL_CATEGORIES);
-  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const qPhoto = params.get('photo');
-      if (qPhoto) return qPhoto;
-    }
-    return null;
-  });
-
-  // Sync ?photo=<id> query param in URL bar for shareable mobile QR codes
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    if (selectedPhotoId) {
-      url.searchParams.set('photo', selectedPhotoId);
-      if (isBooting) setIsBooting(false);
-    } else {
-      url.searchParams.delete('photo');
-    }
-    window.history.replaceState({}, '', url.toString());
-  }, [selectedPhotoId]);
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null);
 
   // Non-intrusive Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -312,73 +166,6 @@ export default function App() {
     showToast(`Created event "${newEvent.title}" with ${initialPhotos.length} photos!`);
   };
 
-  // Update aspect ratio of a photo from LightboxModal and persist to Firestore
-  const handleUpdatePhotoAspectRatio = (
-    photoId: string,
-    aspectRatio: Photo['aspectRatio'],
-    objectFit: 'cover' | 'contain' = 'cover'
-  ) => {
-    setPhotos((prev) =>
-      prev.map((p) => {
-        if (p.id === photoId) {
-          const updated = { ...p, aspectRatio, objectFit };
-          savePhotoToFirestore(updated).catch(() => {});
-          return updated;
-        }
-        return p;
-      })
-    );
-  };
-
-  // Admin Moderation for Users
-  const handleModerateUser = async (
-    userId: string,
-    updates: Partial<UserProfile> | 'delete'
-  ) => {
-    if (updates === 'delete') {
-      setRegisteredAccounts((prev) => prev.filter((u) => u.userId !== userId));
-      try {
-        await deleteDoc(doc(db, 'users', userId));
-      } catch {}
-      showToast('Removed user account.');
-      return;
-    }
-    setRegisteredAccounts((prev) =>
-      prev.map((u) => {
-        if (u.userId === userId) {
-          const next = { ...u, ...updates };
-          saveUserProfileToFirestore(next).catch(() => {});
-          return next;
-        }
-        return u;
-      })
-    );
-    showToast('Updated user account role / moderation status.');
-  };
-
-  // Admin Moderation for Photos
-  const handleModeratePhoto = async (
-    photoId: string,
-    status: 'approved' | 'pending' | 'rejected' | 'delete'
-  ) => {
-    if (status === 'delete') {
-      handleDeletePhoto(photoId);
-      deletePhotoFromFirestore(photoId).catch(() => {});
-      return;
-    }
-    setPhotos((prev) =>
-      prev.map((p) => {
-        if (p.id === photoId) {
-          const updated = { ...p, moderationStatus: status };
-          savePhotoToFirestore(updated).catch(() => {});
-          return updated;
-        }
-        return p;
-      })
-    );
-    showToast(`Photo moderation set to ${status}.`);
-  };
-
   // Delete a single photo (including any default example image)
   const handleDeletePhoto = (photoId: string) => {
     const target = photos.find(p => p.id === photoId);
@@ -430,7 +217,7 @@ export default function App() {
 
       // Photographer filter
       if (selectedPhotographer !== 'all') {
-        const creator = activeCreators.find(c => c.id === selectedPhotographer);
+        const creator = CREATOR_TEAM.find(c => c.id === selectedPhotographer);
         if (creator && !photo.photographerName.toLowerCase().includes(creator.name.toLowerCase())) {
           return false;
         }
@@ -572,7 +359,7 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-stone-50 dark:bg-black text-stone-900 dark:text-white selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black flex flex-col font-sans transition-colors duration-700">
       {/* Smooth Inertial Scroll Controller (Decelerates smoothly when stopping wheel/touch scroll) */}
-      {visualSettings.smoothScrollEnabled && <SmoothScrollController />}
+      <SmoothScrollController />
 
       {/* Non-intrusive Toast */}
       {toastMessage && (
@@ -607,15 +394,8 @@ export default function App() {
         favoritesCount={favoritesCount}
         currentUser={currentUser}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         isDarkMode={isDarkMode}
-        onToggleDarkMode={() => {
-          setIsDarkMode((prev) => {
-            const next = !prev;
-            setVisualSettings((s) => ({ ...s, isDarkMode: next }));
-            return next;
-          });
-        }}
+        onToggleDarkMode={() => setIsDarkMode(prev => !prev)}
       />
 
       {/* GPU-Accelerated Smooth Scroll Container with Exponential Friction Drift */}
@@ -790,7 +570,7 @@ export default function App() {
                     }}
                     className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 cubic-bezier(0.16, 1, 0.3, 1) ${
                       isHeroShowcaseActive
-                        ? 'opacity-100 blur-0 top-[6%] left-[2%] lg:left-[-16%] scale-100 translate-y-0'
+                        ? 'opacity-100 blur-0 top-[6%] left-[-12%] lg:left-[-22%] scale-100 translate-y-0'
                         : 'opacity-0 blur-md top-[25%] left-[15%] scale-75 translate-y-6 pointer-events-none'
                     }`}
                   >
@@ -816,7 +596,7 @@ export default function App() {
                     }}
                     className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 delay-100 cubic-bezier(0.16, 1, 0.3, 1) ${
                       isHeroShowcaseActive
-                        ? 'opacity-100 blur-0 bottom-[16%] left-[4%] lg:left-[-32%] scale-100 translate-x-0'
+                        ? 'opacity-100 blur-0 bottom-[16%] left-[-28%] lg:left-[-56%] scale-100 translate-x-0'
                         : 'opacity-0 blur-md bottom-[25%] left-[10%] scale-75 translate-x-12 pointer-events-none'
                     }`}
                   >
@@ -859,7 +639,7 @@ export default function App() {
                   </div>
                 )}
 
-                {/* FLOATING SATELLITE CARD 4 (Top-Right inside Central Hero — Slow Blur Reveal, Zero Edge Clipping) */}
+                {/* FLOATING SATELLITE CARD 4 (Top-Right outside Central Hero — Slow Blur Reveal) */}
                 {photos[6] && (
                   <div
                     onClick={(e) => {
@@ -868,7 +648,7 @@ export default function App() {
                     }}
                     className={`hidden sm:block absolute z-40 cursor-pointer transition-all duration-1500 delay-200 cubic-bezier(0.16, 1, 0.3, 1) ${
                       isHeroShowcaseActive
-                        ? 'opacity-100 blur-0 top-[22%] right-[2%] lg:right-[4%] scale-100 translate-x-0'
+                        ? 'opacity-100 blur-0 top-[22%] right-[-2%] lg:right-[-4%] scale-100 translate-x-0'
                         : 'opacity-0 blur-md top-[30%] right-[20%] scale-75 -translate-x-8 pointer-events-none'
                     }`}
                   >
@@ -951,7 +731,7 @@ export default function App() {
                   </span>
                 </button>
 
-                {activeCreators.map((creator) => {
+                {CREATOR_TEAM.map((creator) => {
                   const isSelected = selectedPhotographer === creator.id;
 
                   return (
@@ -988,7 +768,7 @@ export default function App() {
               </div>
 
               {selectedPhotographer !== 'all' && (() => {
-                const activeCreator = activeCreators.find(c => c.id === selectedPhotographer);
+                const activeCreator = CREATOR_TEAM.find(c => c.id === selectedPhotographer);
                 if (!activeCreator) return null;
                 return (
                   <div className="mt-2 p-3.5 rounded-2xl ultra-glass flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-stone-700 dark:text-white/85 animate-apple-fade-in shadow-xs">
@@ -1022,7 +802,7 @@ export default function App() {
             categories={categories}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
-            creators={activeCreators}
+            creators={CREATOR_TEAM}
             selectedPhotographer={selectedPhotographer}
             onSelectPhotographer={setSelectedPhotographer}
             selectedDateRange={selectedDateRange}
@@ -1168,7 +948,7 @@ export default function App() {
         <CollaborationsPage
           collaborativeSets={INITIAL_COLLABORATIVE_SETS}
           photos={photos}
-          creators={activeCreators}
+          creators={CREATOR_TEAM}
           onSelectPhoto={(photo) => setSelectedPhotoId(photo.id)}
           onQuickDownload={handleDownload}
           onNavigateToUpload={() => {
@@ -1199,7 +979,7 @@ export default function App() {
       {/* DEDICATED PHOTOGRAPHERS PAGE */}
       {activePage === 'team' && (
         <PhotographersPage
-          creators={activeCreators}
+          creators={CREATOR_TEAM}
           photos={photos}
           onSelectPhotographer={(creatorId) => {
             setSelectedPhotographer(creatorId);
@@ -1263,7 +1043,7 @@ export default function App() {
 
       </div>
 
-      {/* Lightbox Modal (Accessible on all pages, with Keyboard Navigation & Aspect Ratio Controls) */}
+      {/* Lightbox Modal (Accessible on all pages) */}
       {selectedPhoto && (
         <LightboxModal
           photo={selectedPhoto}
@@ -1273,26 +1053,23 @@ export default function App() {
           onToggleFavorite={handleToggleFavorite}
           onDownload={handleDownload}
           onDeletePhoto={handleDeletePhoto}
-          onUpdateAspectRatio={handleUpdatePhotoAspectRatio}
           currentLang={currentLang}
           allPhotosCount={filteredPhotos.length}
           currentIndex={selectedPhotoIndex >= 0 ? selectedPhotoIndex : 0}
         />
       )}
 
-      {/* User & Creator Account Panel (Real Google Sign-In, 4-Digit Gmail Verification Code, Admin Moderation) */}
+      {/* User and Creator Account & Credits Management Modal */}
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
         currentUser={currentUser}
-        registeredAccounts={registeredAccounts}
-        photos={photos}
         onSwitchUser={(user) => {
           setCurrentUser(user);
           showToast(`Switched account to ${user.displayName} (${user.credits ?? 0} Credits)`);
         }}
         onUpdateCredits={(newTotal) => {
-          setCurrentUser((prev) => ({ ...prev, credits: newTotal }));
+          setCurrentUser(prev => ({ ...prev, credits: newTotal }));
         }}
         onNavigateToUpload={() => {
           setIsAccountModalOpen(false);
@@ -1301,42 +1078,18 @@ export default function App() {
         }}
         onCreateAccount={(newUser) => {
           setCurrentUser(newUser);
-          setRegisteredAccounts((prev) => {
-            const filtered = prev.filter((u) => u.userId !== newUser.userId);
-            return [newUser, ...filtered];
-          });
-          showToast(
-            `Welcome ${newUser.displayName}! Gmail-verified ${
-              newUser.isCreator ? 'Creator' : 'Viewer'
-            } account activated (+${newUser.credits} Credits).`
-          );
-        }}
-        onModerateUser={handleModerateUser}
-        onModeratePhoto={handleModeratePhoto}
-      />
-
-      {/* Visual & Performance Settings Panel (Blur Intensity, Liquid Glass, Theme Colors, Animations) */}
-      <SettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        settings={visualSettings}
-        onUpdateSettings={handleUpdateVisualSettings}
-        onResetSettings={() => {
-          setVisualSettings(DEFAULT_VISUAL_SETTINGS);
-          setIsDarkMode(DEFAULT_VISUAL_SETTINGS.isDarkMode);
-          showToast('Reset visual & performance settings to fast 120fps defaults.');
+          showToast(`Welcome ${newUser.displayName}! Created ${newUser.isCreator ? 'Creator' : 'Standard'} account (+${newUser.credits} Credits).`);
         }}
       />
 
-      {/* Liquid Glass Bottom Navigation Bar (6 Core Sections + Clean Account Panel + Settings Trigger) */}
+      {/* Liquid Glass Bottom Navigation Bar (6 Core Sections + Google 2FA Account Trigger) */}
       <FloatingBottomDock
         activePage={activePage}
         onNavigate={(page) => setActivePage(page)}
         onReplayBoot={() => setIsBooting(true)}
         onOpenAccountModal={() => setIsAccountModalOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
         isCreator={currentUser?.isCreator}
-        mfaVerified={Boolean(currentUser?.gmailVerified)}
+        mfaVerified={true}
       />
 
       {/* Minimalist Editorial Footer with Pure Dark Mode */}

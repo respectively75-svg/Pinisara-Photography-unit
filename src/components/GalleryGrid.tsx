@@ -42,8 +42,6 @@ function mapAspectRatioToClass(
       return 'aspect-16/10';
     case '16:9':
       return 'aspect-16/9';
-    case '21:9':
-      return 'aspect-21/9';
     case '4:3':
       return 'aspect-4/3';
     case '3:2':
@@ -52,14 +50,8 @@ function mapAspectRatioToClass(
       return 'aspect-square';
     case '4:5':
       return 'aspect-4/5';
-    case '3:4':
-      return 'aspect-3/4';
     case '2:3':
       return 'aspect-2/3';
-    case '9:16':
-      return 'aspect-9/16';
-    case 'original':
-      return 'aspect-auto';
     default:
       return fallback;
   }
